@@ -140,8 +140,8 @@ fun MainShell(
                 composable("home") { HomeScreen() }
                 composable("rooms") {
                     RoomsScreen(onNavigateToChat = { roomId, roomName, creatorId ->
-                        val safeCreatorId = creatorId ?: "null"
-                        navController.navigate("chat/$roomId/$roomName/$safeCreatorId")
+                        val safeCreatorId = creatorId?.toString() ?: "null"
+                        navController.navigate("chat/$roomId/$roomName?creatorId=$safeCreatorId")
                     })
                 }
                 composable("messages") { MessagesScreen() }
@@ -150,18 +150,22 @@ fun MainShell(
                 composable("about") { AboutScreen() }
 
                 composable(
-                    route = "chat/{roomId}/{roomName}/{creatorId}",
+                    route = "chat/{roomId}/{roomName}?creatorId={creatorId}",
                     arguments = listOf(
                         navArgument("roomId") { type = NavType.StringType },
                         navArgument("roomName") { type = NavType.StringType },
-                        navArgument("creatorId") { type = NavType.StringType }
+                        navArgument("creatorId") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = "null"
+                        }
                     )
                 ) { backStackEntry ->
                     val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
                     val encodedName = backStackEntry.arguments?.getString("roomName") ?: ""
                     val roomName = java.net.URLDecoder.decode(encodedName, "UTF-8")
                     val rawCreatorId = backStackEntry.arguments?.getString("creatorId")
-                    val creatorId = if (rawCreatorId == "null") null else rawCreatorId
+                    val creatorId = if (rawCreatorId == "null" || rawCreatorId == null) null else rawCreatorId
 
                     ChatScreen(
                         roomId = roomId,

@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import java.io.File
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +44,7 @@ import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
 import androidx.compose.ui.semantics.liveRegion
+import com.blind.social.data.LiveKitYonetici
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -71,25 +74,43 @@ fun ChatScreen(
     var selectedMessage by remember { mutableStateOf<Mesaj?>(null) }
     var showModDialog by remember { mutableStateOf(false) }
 
-    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                // Start recording can be invoked next time safely
+    // Voice Chat State
+    var showVoiceChatSheet by remember { mutableStateOf(false) }
+    val liveKitYonetici = remember { LiveKitYonetici(context) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var pendingVoiceAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    val multiplePermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val allGranted = permissions.entries.all { it.value }
+            if (allGranted) {
+                pendingVoiceAction?.invoke()
+                pendingVoiceAction = null
             } else {
-                android.widget.Toast.makeText(context, "Mikrofon izni gerekiyor", android.widget.Toast.LENGTH_SHORT).show()
+                pendingVoiceAction = null
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Sesli sohbete katılmak için Mikrofon ve Ses izinleri gerekiyor.")
+                }
             }
         }
     )
 
-    fun checkAndStartRecording(onStart: () -> Unit) {
-        when (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)) {
-            PackageManager.PERMISSION_GRANTED -> {
-                onStart()
-            }
-            else -> {
-                recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
+    fun checkPermissionsAndRun(onSuccess: () -> Unit) {
+        val hasRecordAudio = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val hasModifyAudio = ContextCompat.checkSelfPermission(context, Manifest.permission.MODIFY_AUDIO_SETTINGS) == PackageManager.PERMISSION_GRANTED
+
+        if (hasRecordAudio && hasModifyAudio) {
+            onSuccess()
+        } else {
+            pendingVoiceAction = onSuccess
+            multiplePermissionsLauncher.launch(
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.MODIFY_AUDIO_SETTINGS
+                )
+            )
         }
     }
 
@@ -197,26 +218,43 @@ fun ChatScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(roomName)
-                        Text("Katılımcılar: 1", style = MaterialTheme.typography.bodySmall) // Mock participant count
-                    }
-                },
-                actions = {
-                    if (isCreator) {
-                        Button(onClick = { /* TODO: Close room logic */ }) {
-                            Text("Odayı Kapat")
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(roomName)
+                            Text("Katılımcılar: 1", style = MaterialTheme.typography.bodySmall) // Mock participant count
                         }
-                    } else {
-                        TextButton(onClick = onNavigateBack) {
-                            Text("Ayrıl")
+                    },
+                    actions = {
+                        if (isCreator) {
+                            Button(onClick = { /* TODO: Close room logic */ }) {
+                                Text("Odayı Kapat")
+                            }
+                        } else {
+                            TextButton(onClick = onNavigateBack) {
+                                Text("Ayrıl")
+                            }
                         }
                     }
+                )
+                Button(
+                    onClick = {
+                        checkPermissionsAndRun {
+                            showVoiceChatSheet = true
+                            coroutineScope.launch {
+                                val username = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Bilinmeyen"
+                                liveKitYonetici.baglan(roomId, currentUser?.id ?: "unknown", username)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text("Sesli Sohbete Katıl")
                 }
-            )
+            }
         },
         bottomBar = {
             BottomAppBar {
@@ -256,7 +294,7 @@ fun ChatScreen(
                                         when (event.changes.first().pressed) {
                                             true -> {
                                                 if (!isRecording) {
-                                                    checkAndStartRecording {
+                                                    checkPermissionsAndRun {
                                                         startRecording()
                                                     }
                                                 }
@@ -332,6 +370,147 @@ fun ChatScreen(
                         }
                     }
                 }
+            }
+        }
+
+        if (showVoiceChatSheet) {
+            var showMicSettingsDialog by remember { mutableStateOf(false) }
+            var isPttMode by remember { mutableStateOf(true) } // Varsayılan Bas-Konuş
+            var useSpeaker by remember { mutableStateOf(true) } // Varsayılan hoparlör
+            var noiseSuppression by remember { mutableStateOf(true) } // Varsayılan açık
+
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showVoiceChatSheet = false
+                    liveKitYonetici.ayril()
+                },
+                modifier = Modifier.fillMaxHeight(0.6f)
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Sesli Sohbet Odası", style = MaterialTheme.typography.titleLarge)
+                        IconButton(
+                            onClick = { showMicSettingsDialog = true },
+                            modifier = Modifier.semantics { contentDescription = "Ses ve mikrofon ayarları" }
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Ayarlar")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val speakers by liveKitYonetici.activeSpeakers.collectAsState()
+
+                    if (speakers.isNotEmpty()) {
+                        Text(
+                            text = "${speakers.first()} konuşuyor...",
+                            modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+                        )
+                    }
+
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(speakers) { speaker ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(speaker)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val isMuted by liveKitYonetici.isMicrophoneMuted.collectAsState()
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .semantics {
+                                    contentDescription = if (isPttMode) "Bas konuş için basılı tutun" else if (isMuted) "Sesi açmak için çift dokunun" else "Sesi kapatmak için çift dokunun"
+                                }
+                                .pointerInput(isPttMode) {
+                                    if (isPttMode) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                when (event.changes.first().pressed) {
+                                                    true -> liveKitYonetici.setMicrophoneMuted(false)
+                                                    false -> liveKitYonetici.setMicrophoneMuted(true)
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        detectTapGestures(
+                                            onTap = {
+                                                liveKitYonetici.setMicrophoneMuted(!isMuted)
+                                            }
+                                        )
+                                    }
+                                },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = if (isMuted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
+                            shadowElevation = 4.dp
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                modifier = Modifier.padding(32.dp),
+                                tint = if (isMuted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (showMicSettingsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showMicSettingsDialog = false },
+                    title = { Text("Mikrofon Ayarları") },
+                    text = {
+                        Column {
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Bas-Konuş Modu")
+                                Switch(
+                                    checked = isPttMode,
+                                    onCheckedChange = { isPttMode = it },
+                                    modifier = Modifier.semantics { contentDescription = "Bas konuş modunu ${if (isPttMode) "kapat" else "aç"}" }
+                                )
+                            }
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Sesi Hoparlöre Ver")
+                                Switch(
+                                    checked = useSpeaker,
+                                    onCheckedChange = {
+                                        useSpeaker = it
+                                        liveKitYonetici.toggleSpeakerphone(it)
+                                    },
+                                    modifier = Modifier.semantics { contentDescription = "Sesi hoparlöre vermeyi ${if (useSpeaker) "kapat" else "aç"}" }
+                                )
+                            }
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Gürültü Engelleme")
+                                Switch(
+                                    checked = noiseSuppression,
+                                    onCheckedChange = {
+                                        noiseSuppression = it
+                                        liveKitYonetici.setNoiseSuppression(it)
+                                    },
+                                    modifier = Modifier.semantics { contentDescription = "Gürültü engellemeyi ${if (noiseSuppression) "kapat" else "aç"}" }
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showMicSettingsDialog = false }) {
+                            Text("Tamam")
+                        }
+                    }
+                )
             }
         }
 

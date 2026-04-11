@@ -29,6 +29,9 @@ android {
         }
         buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL") ?: ""}\"")
         buildConfigField("String", "SUPABASE_KEY", "\"${localProperties.getProperty("SUPABASE_KEY") ?: ""}\"")
+        buildConfigField("String", "LIVEKIT_URL", "\"${localProperties.getProperty("LIVEKIT_URL") ?: ""}\"")
+        buildConfigField("String", "LIVEKIT_API_KEY", "\"${localProperties.getProperty("LIVEKIT_API_KEY") ?: ""}\"")
+        buildConfigField("String", "LIVEKIT_API_SECRET", "\"${localProperties.getProperty("LIVEKIT_API_SECRET") ?: ""}\"")
     }
 
     buildTypes {
@@ -90,6 +93,15 @@ dependencies {
 
     // DataStore for Preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // LiveKit
+    implementation("io.livekit:livekit-android:2.4.1")
+    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5") {
+        exclude(group = "com.fasterxml.jackson.core", module = "jackson-databind")
+    }
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

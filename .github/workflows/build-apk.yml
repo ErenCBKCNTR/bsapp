@@ -24,7 +24,10 @@ jobs:
       - name: Inject Supabase Secrets
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > local.properties
-          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> local.properties
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> local.properties
+          echo "LIVEKIT_URL=${{ secrets.LIVEKIT_URL }}" >> local.properties
+          echo "LIVEKIT_API_KEY=${{ secrets.LIVEKIT_API_KEY }}" >> local.properties
+          echo "LIVEKIT_API_SECRET=${{ secrets.LIVEKIT_API_SECRET }}" >> local.properties
 
       - name: Build with Gradle
         run: ./gradlew assembleDebug

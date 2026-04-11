@@ -243,10 +243,14 @@ fun ChatScreen(
                 Button(
                     onClick = {
                         checkPermissionsAndRun {
-                            showVoiceChatSheet = true
                             coroutineScope.launch {
                                 val username = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Bilinmeyen"
-                                liveKitYonetici.baglan(roomId, currentUser?.id ?: "unknown", username)
+                                val result = liveKitYonetici.baglan(roomId, currentUser?.id ?: "unknown", username)
+                                if (result.isSuccess) {
+                                    showVoiceChatSheet = true
+                                } else {
+                                    snackbarHostState.showSnackbar("Sesli sohbete bağlanırken bir hata oluştu: ${result.exceptionOrNull()?.message}")
+                                }
                             }
                         }
                     },

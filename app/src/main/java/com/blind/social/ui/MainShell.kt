@@ -158,7 +158,8 @@ fun MainShell(
                     )
                 ) { backStackEntry ->
                     val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
-                    val roomName = backStackEntry.arguments?.getString("roomName") ?: ""
+                    val encodedName = backStackEntry.arguments?.getString("roomName") ?: ""
+                    val roomName = java.net.URLDecoder.decode(encodedName, "UTF-8")
                     val rawCreatorId = backStackEntry.arguments?.getString("creatorId")
                     val creatorId = if (rawCreatorId == "null") null else rawCreatorId
 

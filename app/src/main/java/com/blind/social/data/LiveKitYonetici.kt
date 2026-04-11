@@ -59,31 +59,33 @@ class LiveKitYonetici(private val context: Context) {
             .compact()
     }
 
-    suspend fun baglan(roomId: String, participantIdentity: String, participantName: String) {
-        val token = generateToken(roomId, participantIdentity, participantName)
+    suspend fun baglan(roomId: String, participantIdentity: String, participantName: String): Result<Unit> {
+        return try {
+            val token = generateToken(roomId, participantIdentity, participantName)
 
-        val audioHandler = AudioSwitchHandler(context)
-        audioHandler.start()
+            val audioHandler = AudioSwitchHandler(context)
+            audioHandler.start()
 
-        room = LiveKit.create(context, options = RoomOptions(adaptiveStream = true))
+            room = LiveKit.create(context, options = RoomOptions(adaptiveStream = true))
 
-        coroutineScope.launch {
-            room?.events?.events?.collect { event ->
-                when (event) {
-                    is RoomEvent.ActiveSpeakersChanged -> {
-                        _activeSpeakers.value = event.speakers.mapNotNull { (it.name ?: it.identity?.value) }
+            coroutineScope.launch {
+                room?.events?.events?.collect { event ->
+                    when (event) {
+                        is RoomEvent.ActiveSpeakersChanged -> {
+                            _activeSpeakers.value = event.speakers.mapNotNull { (it.name ?: it.identity?.value) }
+                        }
+                        else -> {}
                     }
-                    else -> {}
                 }
             }
-        }
 
-        try {
             room?.connect(wsUrl, token)
             // Varsayılan olarak sesi kapat
             setMicrophoneMuted(true)
+            Result.success(Unit)
         } catch (e: Exception) {
             e.printStackTrace()
+            Result.failure(e)
         }
     }
 

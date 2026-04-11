@@ -167,7 +167,12 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                             )
 
                             Button(
-                                onClick = { room.id?.let { roomId -> onNavigateToChat(roomId, room.odaAdi, room.kurucuId) } },
+                                onClick = {
+                                    room.id?.let { roomId ->
+                                        val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
+                                        onNavigateToChat(roomId, encodedName, room.kurucuId)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Odaya Bağlan")

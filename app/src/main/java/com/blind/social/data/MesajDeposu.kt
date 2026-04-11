@@ -69,6 +69,7 @@ class MesajDeposu {
             SupabaseModul.client.postgrest["mesajlar"].insert(mesaj)
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("MesajDeposu", "Mesaj Gönder Hatası", e)
             Result.failure(e)
         }
     }
@@ -94,6 +95,7 @@ class MesajDeposu {
             SupabaseModul.client.postgrest["mesajlar"].insert(mesaj)
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("MesajDeposu", "Sesli Mesaj Hatası", e)
             Result.failure(e)
         }
     }

@@ -161,19 +161,22 @@ fun ChatScreen(
         }
     }
 
-    fun stopRecordingAndSend() {
+    fun stopRecordingAndSend(onResult: (String?) -> Unit) {
         try {
             mediaRecorder?.stop()
             mediaRecorder?.release()
             mediaRecorder = null
             isRecording = false
-            triggerVibration()
 
             audioFile?.let { file ->
                 coroutineScope.launch {
                     val result = mesajDeposu.sesliMesajGonder(roomId, file)
                     if (result.isSuccess) {
                         file.delete()
+                        triggerVibration()
+                        onResult(null)
+                    } else {
+                        onResult("Sesli mesaj gönderilemedi: ${result.exceptionOrNull()?.message}")
                     }
                 }
             }
@@ -181,6 +184,7 @@ fun ChatScreen(
         } catch (e: Exception) {
             e.printStackTrace()
             isRecording = false
+            onResult("Ses kaydedilemedi: ${e.message}")
         }
     }
 
@@ -277,9 +281,13 @@ fun ChatScreen(
                         onClick = {
                             if (messageText.isNotBlank()) {
                                 coroutineScope.launch {
-                                    mesajDeposu.mesajGonder(roomId, messageText)
-                                    messageText = ""
-                                    triggerVibration()
+                                    val result = mesajDeposu.mesajGonder(roomId, messageText)
+                                    if (result.isSuccess) {
+                                        messageText = ""
+                                        triggerVibration()
+                                    } else {
+                                        snackbarHostState.showSnackbar("Mesaj gönderilemedi: ${result.exceptionOrNull()?.message}")
+                                    }
                                 }
                             }
                         },
@@ -304,7 +312,15 @@ fun ChatScreen(
                                                 }
                                             }
                                             false -> {
-                                                if (isRecording) stopRecordingAndSend()
+                                                if (isRecording) {
+                                                    stopRecordingAndSend { errorMsg ->
+                                                        coroutineScope.launch {
+                                                            if (errorMsg != null) {
+                                                                snackbarHostState.showSnackbar(errorMsg)
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }

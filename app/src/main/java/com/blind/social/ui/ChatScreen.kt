@@ -13,6 +13,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import java.io.File
+import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +26,9 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.text.style.TextAlign
+
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -156,6 +162,8 @@ fun ChatScreen(
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioEncodingBitRate(96000)
+            recorder.setAudioSamplingRate(44100)
             recorder.setOutputFile(tempFile.absolutePath)
             recorder.prepare()
             recorder.start()
@@ -449,6 +457,38 @@ fun ChatScreen(
                                 }
                             } else {
                                 Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
+                            }
+
+                                                        val timeText = try {
+                                mesaj.olusturmaTarihi?.let { dateStr ->
+                                    val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+                                    parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                    val date = parser.parse(dateStr)
+                                    val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                    formatter.timeZone = java.util.TimeZone.getDefault()
+                                    formatter.format(date!!)
+                                } ?: ""
+                            } catch (e: Exception) {
+                                ""
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = timeText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Okundu",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
                             }
                         }
                     }

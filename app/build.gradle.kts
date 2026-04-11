@@ -27,11 +27,26 @@ android {
         if (localPropertiesFile.exists()) {
             localPropertiesFile.inputStream().use { localProperties.load(it) }
         }
-        buildConfigField("String", "SUPABASE_URL", "${localProperties.getProperty("SUPABASE_URL") ?: "\"dummy_url\""}")
-        buildConfigField("String", "SUPABASE_KEY", "${localProperties.getProperty("SUPABASE_KEY") ?: "\"dummy_key\""}")
-        buildConfigField("String", "LIVEKIT_URL", "${localProperties.getProperty("LIVEKIT_URL") ?: "\"wss://dummy.url\""}")
-        buildConfigField("String", "LIVEKIT_API_KEY", "${localProperties.getProperty("LIVEKIT_API_KEY") ?: "\"dummy_livekit_key\""}")
-        buildConfigField("String", "LIVEKIT_API_SECRET", "${localProperties.getProperty("LIVEKIT_API_SECRET") ?: "\"dummy_livekit_secret_that_is_at_least_thirty_two_bytes_long\""}")
+
+        fun getSecret(key: String): String {
+            val envValue = System.getenv(key)
+            if (!envValue.isNullOrBlank()) {
+                return "\"${envValue.removePrefix("\"").removeSuffix("\"")}\""
+            }
+
+            val propValue = localProperties.getProperty(key)
+            if (!propValue.isNullOrBlank()) {
+                return "\"${propValue.removePrefix("\"").removeSuffix("\"")}\""
+            }
+
+            throw GradleException("Missing required secret: $key. Please set it in local.properties or as an environment variable.")
+        }
+
+        buildConfigField("String", "SUPABASE_URL", getSecret("SUPABASE_URL"))
+        buildConfigField("String", "SUPABASE_KEY", getSecret("SUPABASE_KEY"))
+        buildConfigField("String", "LIVEKIT_URL", getSecret("LIVEKIT_URL"))
+        buildConfigField("String", "LIVEKIT_API_KEY", getSecret("LIVEKIT_API_KEY"))
+        buildConfigField("String", "LIVEKIT_API_SECRET", getSecret("LIVEKIT_API_SECRET"))
     }
 
     buildTypes {

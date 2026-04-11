@@ -3,10 +3,21 @@ package com.blind.social
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class BlindSocialApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        GlobalScope.launch {
+            try {
+                SupabaseModul.client.realtime.connect()
+            } catch (e: Exception) {
+                Log.e("Realtime", "Failed to connect to Supabase Realtime", e)
+            }
+        }
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, exception ->

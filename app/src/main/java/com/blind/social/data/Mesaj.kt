@@ -8,7 +8,7 @@ data class Mesaj(
     val id: String? = null,
     @SerialName("oda_id")
     val odaId: String,
-    @SerialName("gonderen_id")
+    @SerialName("kullanici_id")
     val gonderenId: String,
     val metin: String,
     @SerialName("mesaj_tipi")

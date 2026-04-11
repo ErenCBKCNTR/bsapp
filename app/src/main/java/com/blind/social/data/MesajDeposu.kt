@@ -80,10 +80,11 @@ class MesajDeposu {
 
             // 1. Storage'a yükle
             val dosyaAdi = "${user.id}_${System.currentTimeMillis()}.m4a"
-            SupabaseModul.client.storage.from("sesli_mesajlar").upload(dosyaAdi, sesDosyasi.readBytes())
+            val bucketName = "sesli_mesajlar"
+            SupabaseModul.client.storage.from(bucketName).upload(dosyaAdi, sesDosyasi.readBytes())
 
             // 2. URL'i al
-            val url = SupabaseModul.client.storage.from("sesli_mesajlar").publicUrl(dosyaAdi)
+            val url = SupabaseModul.client.storage.from(bucketName).publicUrl(dosyaAdi)
 
             // 3. Mesajı veritabanına kaydet
             val mesaj = Mesaj(

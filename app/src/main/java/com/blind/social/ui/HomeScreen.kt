@@ -1,45 +1,31 @@
 package com.blind.social.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.blind.social.data.KimlikDeposu
-import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(
-    onLogoutSuccess: () -> Unit
-) {
-    val kimlikDeposu = remember { KimlikDeposu() }
-    val coroutineScope = rememberCoroutineScope()
-
+fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Ana Sayfaya Hoş Geldiniz!", modifier = Modifier.padding(bottom = 24.dp))
-
-        Button(
-            onClick = {
-                coroutineScope.launch {
-                    val result = kimlikDeposu.oturumKapat()
-                    if (result.isSuccess) {
-                        onLogoutSuccess()
-                    }
-                }
-            },
-            modifier = Modifier.semantics { contentDescription = "Oturumu kapatmak için çift dokunun" }
-        ) {
-            Text("Oturumu Kapat")
-        }
+        val welcomeText = "Blind Social'a Hoş Geldiniz! Bu uygulama erişilebilir ve güvenli bir şekilde iletişim kurmanız için tasarlanmıştır."
+        Text(
+            text = welcomeText,
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { contentDescription = welcomeText }
+        )
     }
 }

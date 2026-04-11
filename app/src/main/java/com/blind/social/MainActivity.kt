@@ -22,17 +22,24 @@ import com.blind.social.ui.RegisterScreen
 import com.blind.social.ui.theme.BlindSocialTheme
 import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            BlindSocialTheme {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val themePreferences = remember { com.blind.social.prefs.ThemePreferences(context) }
+            val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = false)
+
+            BlindSocialTheme(darkTheme = isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation()
+                    AppNavigation(themePreferences, isDarkMode)
                 }
             }
         }
@@ -40,7 +47,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isDarkMode: Boolean) {
     val navController = rememberNavController()
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -81,10 +88,18 @@ fun AppNavigation() {
             )
         }
         composable("home") {
-            HomeScreen(
+            val coroutineScope = rememberCoroutineScope()
+
+            com.blind.social.ui.MainShell(
                 onLogoutSuccess = {
                     navController.navigate("login") {
                         popUpTo("home") { inclusive = true }
+                    }
+                },
+                isDarkMode = isDarkMode,
+                onToggleTheme = { newTheme ->
+                    coroutineScope.launch {
+                        themePreferences.saveThemePreference(newTheme)
                     }
                 }
             )

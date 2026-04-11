@@ -22,6 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,6 +75,10 @@ fun ChatScreen(
 
     var selectedMessage by remember { mutableStateOf<Mesaj?>(null) }
     var showModDialog by remember { mutableStateOf(false) }
+
+    // Audio Playback State
+    var playingMessageId by remember { mutableStateOf<String?>(null) }
+    var globalMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
     // Voice Chat State
     var showVoiceChatSheet by remember { mutableStateOf(false) }
@@ -189,6 +195,42 @@ fun ChatScreen(
             val errorMsg = e.localizedMessage ?: "Bilinmeyen hata"
             val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
             onResult("Ses kaydedilemedi: $displayMsg")
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            globalMediaPlayer?.release()
+        }
+    }
+
+    fun toggleAudioPlayback(url: String, messageId: String?) {
+        if (playingMessageId == messageId) {
+            // Stop playing
+            globalMediaPlayer?.stop()
+            globalMediaPlayer?.release()
+            globalMediaPlayer = null
+            playingMessageId = null
+        } else {
+            // Play new audio
+            globalMediaPlayer?.release()
+            try {
+                val mp = MediaPlayer().apply {
+                    setDataSource(url)
+                    prepareAsync()
+                    setOnPreparedListener { start() }
+                    setOnCompletionListener {
+                        release()
+                        globalMediaPlayer = null
+                        playingMessageId = null
+                    }
+                }
+                globalMediaPlayer = mp
+                playingMessageId = messageId
+            } catch (e: Exception) {
+                e.printStackTrace()
+                playingMessageId = null
+            }
         }
     }
 
@@ -371,7 +413,8 @@ fun ChatScreen(
                                 if (autoRead) {
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                                 }
-                                contentDescription = "${mesaj.gonderenKullaniciAdi ?: "Biri"}: ${mesaj.metin}"
+                                val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
+                                contentDescription = "$senderName: ${mesaj.metin}"
                             },
                         colors = CardDefaults.cardColors(
                             containerColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
@@ -382,14 +425,28 @@ fun ChatScreen(
                         )
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
+                            val displaySenderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
                             Text(
-                                text = mesaj.gonderenKullaniciAdi ?: "Bilinmeyen Kullanıcı",
+                                text = displaySenderName,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             if (mesaj.mesajTipi == "ses") {
-                                Text("🎵 Sesli Mesaj", style = MaterialTheme.typography.bodyMedium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { toggleAudioPlayback(mesaj.metin, mesaj.id) },
+                                        modifier = Modifier.semantics {
+                                            contentDescription = if (playingMessageId == mesaj.id) "Sesi duraklat" else "Sesi oynat"
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (playingMessageId == mesaj.id) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = null
+                                        )
+                                    }
+                                    Text("🎵 Sesli Mesaj", style = MaterialTheme.typography.bodyMedium)
+                                }
                             } else {
                                 Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
                             }

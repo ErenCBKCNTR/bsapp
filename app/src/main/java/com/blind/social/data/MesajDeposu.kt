@@ -16,24 +16,31 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.CoroutineScope
+import io.github.jan.supabase.postgrest.query.Columns
 
 class MesajDeposu {
 
-    fun mesajlariDinle(odaId: String): Flow<Result<List<Mesaj>>> = flow {
+    fun mesajlariDinle(odaId: String): Flow<Result<List<Mesaj>>> = kotlinx.coroutines.flow.callbackFlow {
+        val coroutineScope = CoroutineScope(Dispatchers.IO)
+        var currentList = mutableListOf<Mesaj>()
+
         try {
-            // First emit the initial state
+            // First fetch initial state
             val initialMesajlar = SupabaseModul.client.postgrest["mesajlar"]
-                .select {
+                .select(columns = Columns.raw("*, profiller(kullanici_adi)")) {
                     filter {
                         eq("oda_id", odaId)
                     }
                 }
                 .decodeList<Mesaj>()
 
-            val currentList = initialMesajlar.toMutableList()
-            emit(Result.success(currentList.toList()))
+            currentList = initialMesajlar.toMutableList()
+            trySend(Result.success(currentList.toList()))
 
-            // Then listen for changes
+            // Then subscribe to realtime changes
             val channel = SupabaseModul.client.realtime.channel("mesajlar-changes-$odaId")
             val changeFlow = channel.postgresChangeFlow<PostgresAction>("public") {
                 table = "mesajlar"
@@ -41,19 +48,33 @@ class MesajDeposu {
             }
             channel.subscribe()
 
-            changeFlow.collect { action ->
-                when (action) {
-                    is PostgresAction.Insert -> {
-                        val newMesaj = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Mesaj>(action.record)
-                        currentList.add(newMesaj)
-                        emit(Result.success(currentList.toList()))
+            val job = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                changeFlow.collect { action ->
+                    when (action) {
+                        is PostgresAction.Insert -> {
+                            val newMesaj = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Mesaj>(action.record)
+                            currentList.add(newMesaj)
+                            trySend(Result.success(currentList.toList()))
+                        }
+                        is PostgresAction.Delete -> {
+                            val deletedId = action.oldRecord["id"]?.jsonPrimitive?.content
+                            if (deletedId != null) {
+                                currentList.removeAll { it.id == deletedId }
+                                trySend(Result.success(currentList.toList()))
+                            }
+                        }
+                        else -> {}
                     }
-                    // Handle Update/Delete similarly if needed
-                    else -> {}
                 }
             }
+
+            awaitClose {
+                job.cancel()
+                coroutineScope.launch { channel.unsubscribe() }
+            }
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            trySend(Result.failure(e))
+            close(e)
         }
     }.flowOn(Dispatchers.IO)
 

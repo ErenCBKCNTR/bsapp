@@ -16,5 +16,13 @@ data class Mesaj(
     @SerialName("olusturma_tarihi")
     val olusturmaTarihi: String? = null,
     @SerialName("gonderen_kullanici_adi")
-    val gonderenKullaniciAdi: String? = null
+    val gonderenKullaniciAdi: String? = null,
+    @SerialName("profiller")
+    val profil: ProfilKatilimci? = null
+)
+
+@Serializable
+data class ProfilKatilimci(
+    @SerialName("kullanici_adi")
+    val kullaniciAdi: String
 )

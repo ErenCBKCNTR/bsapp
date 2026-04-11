@@ -29,9 +29,17 @@ class KimlikDeposu {
                 this.data = metadata
             }
 
-            // 2. profiller tablosuna ekle
-            val user = SupabaseModul.client.auth.currentUserOrNull()
+            // 2. Eğer doğrulama kapalıysa ve oturum otomatik açılmamışsa giriş yapmayı dene
+            var user = SupabaseModul.client.auth.currentUserOrNull()
+            if (user == null) {
+                SupabaseModul.client.auth.signInWith(Email) {
+                    this.email = email
+                    this.password = sifre
+                }
+                user = SupabaseModul.client.auth.currentUserOrNull()
+            }
 
+            // 3. profiller tablosuna ekle
             if (user != null) {
                 val profil = KullaniciProfili(
                     id = user.id,
@@ -42,8 +50,10 @@ class KimlikDeposu {
                 )
 
                 SupabaseModul.client.postgrest["profiller"].upsert(profil)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Kullanıcı oturumu başlatılamadı. Email doğrulama açık olabilir."))
             }
-            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

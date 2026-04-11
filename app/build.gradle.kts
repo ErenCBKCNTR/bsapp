@@ -27,11 +27,11 @@ android {
         if (localPropertiesFile.exists()) {
             localPropertiesFile.inputStream().use { localProperties.load(it) }
         }
-        buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL") ?: "dummy_url"}\"")
-        buildConfigField("String", "SUPABASE_KEY", "\"${localProperties.getProperty("SUPABASE_KEY") ?: "dummy_key"}\"")
-        buildConfigField("String", "LIVEKIT_URL", "\"${localProperties.getProperty("LIVEKIT_URL") ?: "wss://dummy.url"}\"")
-        buildConfigField("String", "LIVEKIT_API_KEY", "\"${localProperties.getProperty("LIVEKIT_API_KEY") ?: "dummy_livekit_key"}\"")
-        buildConfigField("String", "LIVEKIT_API_SECRET", "\"${localProperties.getProperty("LIVEKIT_API_SECRET") ?: "dummy_livekit_secret_that_is_at_least_thirty_two_bytes_long"}\"")
+        buildConfigField("String", "SUPABASE_URL", "${localProperties.getProperty("SUPABASE_URL") ?: "\"dummy_url\""}")
+        buildConfigField("String", "SUPABASE_KEY", "${localProperties.getProperty("SUPABASE_KEY") ?: "\"dummy_key\""}")
+        buildConfigField("String", "LIVEKIT_URL", "${localProperties.getProperty("LIVEKIT_URL") ?: "\"wss://dummy.url\""}")
+        buildConfigField("String", "LIVEKIT_API_KEY", "${localProperties.getProperty("LIVEKIT_API_KEY") ?: "\"dummy_livekit_key\""}")
+        buildConfigField("String", "LIVEKIT_API_SECRET", "${localProperties.getProperty("LIVEKIT_API_SECRET") ?: "\"dummy_livekit_secret_that_is_at_least_thirty_two_bytes_long\""}")
     }
 
     buildTypes {

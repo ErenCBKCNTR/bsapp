@@ -1,0 +1,64 @@
+package com.blind.social.data
+
+import com.blind.social.SupabaseModul
+import io.github.jan.supabase.gotrue.auth
+import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.postgrest.postgrest
+
+class KimlikDeposu {
+
+    suspend fun kayitOl(
+        email: String,
+        sifre: String,
+        kullaniciAdi: String,
+        adSoyad: String,
+        dogumTarihi: String
+    ): Result<Unit> {
+        return try {
+            // 1. Supabase Auth ile kayıt
+            SupabaseModul.client.auth.signUpWith(Email) {
+                this.email = email
+                this.password = sifre
+            }
+
+            // 2. profiller tablosuna ekle
+            val user = SupabaseModul.client.auth.currentUserOrNull()
+
+            if (user != null) {
+                val profil = KullaniciProfili(
+                    id = user.id,
+                    email = email,
+                    kullaniciAdi = kullaniciAdi,
+                    adSoyad = adSoyad,
+                    dogumTarihi = dogumTarihi
+                )
+
+                SupabaseModul.client.postgrest["profiller"].insert(profil)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun girisYap(email: String, sifre: String): Result<Unit> {
+        return try {
+            SupabaseModul.client.auth.signInWith(Email) {
+                this.email = email
+                this.password = sifre
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun oturumKapat(): Result<Unit> {
+        return try {
+            SupabaseModul.client.auth.signOut()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}

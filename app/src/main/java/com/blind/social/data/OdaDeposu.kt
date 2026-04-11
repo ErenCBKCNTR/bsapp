@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 
 class OdaDeposu {
 
@@ -65,7 +67,7 @@ class OdaDeposu {
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun odaOlustur(oda: Oda): Result<Unit> {
         return try {

@@ -25,11 +25,22 @@ import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
+import android.content.Context
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
+        val crashLog = prefs.getString("last_crash", null)
+
         setContent {
+            var showCrashDialog by remember { mutableStateOf(crashLog != null) }
+
             val context = androidx.compose.ui.platform.LocalContext.current
             val themePreferences = remember { com.blind.social.prefs.ThemePreferences(context) }
             val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = false)
@@ -39,7 +50,29 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation(themePreferences, isDarkMode)
+                    if (showCrashDialog && crashLog != null) {
+                        AlertDialog(
+                            onDismissRequest = { /* Zorunlu kapanmalı */ },
+                            title = { Text("Uygulama Çöktü (Fatal Error)") },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    Text(crashLog, style = MaterialTheme.typography.bodySmall)
+                                }
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        prefs.edit().remove("last_crash").apply()
+                                        showCrashDialog = false
+                                    }
+                                ) {
+                                    Text("Temizle ve Kapat")
+                                }
+                            }
+                        )
+                    } else {
+                        AppNavigation(themePreferences, isDarkMode)
+                    }
                 }
             }
         }

@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 
 class MesajDeposu {
 
@@ -52,7 +54,7 @@ class MesajDeposu {
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun mesajGonder(odaId: String, metin: String): Result<Unit> {
         return try {

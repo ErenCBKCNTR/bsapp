@@ -21,6 +21,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Inject Supabase Secrets
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > local.properties
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> local.properties
+
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 

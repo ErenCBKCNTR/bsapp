@@ -4,6 +4,8 @@ import com.blind.social.SupabaseModul
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class KimlikDeposu {
 
@@ -19,6 +21,12 @@ class KimlikDeposu {
             SupabaseModul.client.auth.signUpWith(Email) {
                 this.email = email
                 this.password = sifre
+
+                // Add username to user metadata for mentions
+                val metadata = buildJsonObject {
+                    put("username", kullaniciAdi)
+                }
+                this.data = metadata
             }
 
             // 2. profiller tablosuna ekle

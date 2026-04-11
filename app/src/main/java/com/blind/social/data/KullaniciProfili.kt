@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 
 @Serializable
 data class KullaniciProfili(
-    val id: String = "",
+    val id: String? = null,
     val email: String,
     @SerialName("kullanici_adi")
     val kullaniciAdi: String,

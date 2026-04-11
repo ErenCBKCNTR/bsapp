@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoomsScreen() {
+fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     val odaDeposu = remember { OdaDeposu() }
     val coroutineScope = rememberCoroutineScope()
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -167,7 +167,7 @@ fun RoomsScreen() {
                             )
 
                             Button(
-                                onClick = { /* TODO: Connect to room */ },
+                                onClick = { room.id?.let { roomId -> onNavigateToChat(roomId, room.odaAdi, room.kurucuId) } },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Odaya Bağlan")

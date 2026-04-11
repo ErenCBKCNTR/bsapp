@@ -10,10 +10,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.blind.social.data.KimlikDeposu
 import kotlinx.coroutines.launch
 
@@ -136,11 +138,37 @@ fun MainShell(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("home") { HomeScreen() }
-                composable("rooms") { RoomsScreen() }
+                composable("rooms") {
+                    RoomsScreen(onNavigateToChat = { roomId, roomName, creatorId ->
+                        val safeCreatorId = creatorId ?: "null"
+                        navController.navigate("chat/$roomId/$roomName/$safeCreatorId")
+                    })
+                }
                 composable("messages") { MessagesScreen() }
                 composable("profile") { ProfileScreen() }
                 composable("privacy") { PrivacySettingsScreen() }
                 composable("about") { AboutScreen() }
+
+                composable(
+                    route = "chat/{roomId}/{roomName}/{creatorId}",
+                    arguments = listOf(
+                        navArgument("roomId") { type = NavType.StringType },
+                        navArgument("roomName") { type = NavType.StringType },
+                        navArgument("creatorId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
+                    val roomName = backStackEntry.arguments?.getString("roomName") ?: ""
+                    val rawCreatorId = backStackEntry.arguments?.getString("creatorId")
+                    val creatorId = if (rawCreatorId == "null") null else rawCreatorId
+
+                    ChatScreen(
+                        roomId = roomId,
+                        roomName = roomName,
+                        creatorId = creatorId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

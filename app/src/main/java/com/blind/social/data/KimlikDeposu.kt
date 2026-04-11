@@ -41,7 +41,7 @@ class KimlikDeposu {
                     dogumTarihi = dogumTarihi
                 )
 
-                SupabaseModul.client.postgrest["profiller"].insert(profil)
+                SupabaseModul.client.postgrest["profiller"].upsert(profil)
             }
             Result.success(Unit)
         } catch (e: Exception) {

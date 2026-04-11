@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
@@ -59,12 +60,14 @@ class MesajDeposu {
     suspend fun mesajGonder(odaId: String, metin: String): Result<Unit> {
         return try {
             val user = SupabaseModul.client.auth.currentUserOrNull() ?: return Result.failure(Exception("Not logged in"))
+            val username = user.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Bilinmeyen Kullanıcı"
 
             val mesaj = Mesaj(
                 odaId = odaId,
                 gonderenId = user.id,
                 metin = metin,
-                mesajTipi = "metin"
+                mesajTipi = "metin",
+                gonderenKullaniciAdi = username
             )
             SupabaseModul.client.postgrest["mesajlar"].insert(mesaj)
             Result.success(Unit)
@@ -77,6 +80,7 @@ class MesajDeposu {
     suspend fun sesliMesajGonder(odaId: String, sesDosyasi: File): Result<Unit> {
         return try {
             val user = SupabaseModul.client.auth.currentUserOrNull() ?: return Result.failure(Exception("Not logged in"))
+            val username = user.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Bilinmeyen Kullanıcı"
 
             // 1. Storage'a yükle
             val dosyaAdi = "${user.id}_${System.currentTimeMillis()}.m4a"
@@ -91,7 +95,8 @@ class MesajDeposu {
                 odaId = odaId,
                 gonderenId = user.id,
                 metin = url,
-                mesajTipi = "ses"
+                mesajTipi = "ses",
+                gonderenKullaniciAdi = username
             )
             SupabaseModul.client.postgrest["mesajlar"].insert(mesaj)
             Result.success(Unit)

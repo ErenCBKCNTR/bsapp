@@ -176,7 +176,9 @@ fun ChatScreen(
                         triggerVibration()
                         onResult(null)
                     } else {
-                        onResult("Sesli mesaj gönderilemedi: ${result.exceptionOrNull()?.message}")
+                        val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
+                        val displayMsg = if (errorMsg.length > 50) errorMsg.take(50) + "..." else errorMsg
+                        onResult("Sesli mesaj gönderilemedi: $displayMsg")
                     }
                 }
             }
@@ -184,7 +186,9 @@ fun ChatScreen(
         } catch (e: Exception) {
             e.printStackTrace()
             isRecording = false
-            onResult("Ses kaydedilemedi: ${e.message}")
+            val errorMsg = e.localizedMessage ?: "Bilinmeyen hata"
+            val displayMsg = if (errorMsg.length > 50) errorMsg.take(50) + "..." else errorMsg
+            onResult("Ses kaydedilemedi: $displayMsg")
         }
     }
 
@@ -286,7 +290,9 @@ fun ChatScreen(
                                         messageText = ""
                                         triggerVibration()
                                     } else {
-                                        snackbarHostState.showSnackbar("Mesaj gönderilemedi: ${result.exceptionOrNull()?.message}")
+                                        val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
+                                        val displayMsg = if (errorMsg.length > 50) errorMsg.take(50) + "..." else errorMsg
+                                        snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
                                     }
                                 }
                             }

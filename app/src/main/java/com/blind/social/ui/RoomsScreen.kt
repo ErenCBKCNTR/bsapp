@@ -29,6 +29,11 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var rooms by remember { mutableStateOf<List<Oda>>(emptyList()) }
 
+    // Password dialog state
+    var pendingRoom by remember { mutableStateOf<Oda?>(null) }
+    var passwordInput by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf(false) }
+
     // Filters
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Tümü") }
@@ -169,8 +174,15 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                             Button(
                                 onClick = {
                                     room.id?.let { roomId ->
-                                        val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
-                                        onNavigateToChat(roomId, encodedName, room.kurucuId)
+                                        if (!room.sifre.isNullOrBlank()) {
+                                            // Şifreli oda: önce şifre sor
+                                            pendingRoom = room
+                                            passwordInput = ""
+                                            passwordError = false
+                                        } else {
+                                            val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
+                                            onNavigateToChat(roomId, encodedName, room.kurucuId)
+                                        }
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -181,6 +193,52 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                     }
                 }
             }
+        }
+
+        // Şifreli oda giriş dialogu
+        if (pendingRoom != null) {
+            AlertDialog(
+                onDismissRequest = { pendingRoom = null },
+                title = { Text("Şifreli Oda") },
+                text = {
+                    Column {
+                        Text("\"${pendingRoom!!.odaAdi}\" odasına girmek için şifre gerekiyor.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = passwordInput,
+                            onValueChange = {
+                                passwordInput = it
+                                passwordError = false
+                            },
+                            label = { Text("Şifre") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = passwordError,
+                            supportingText = if (passwordError) { { Text("Şifre yanlış", color = MaterialTheme.colorScheme.error) } } else null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val room = pendingRoom!!
+                        if (passwordInput == room.sifre) {
+                            val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
+                            onNavigateToChat(room.id!!, encodedName, room.kurucuId)
+                            pendingRoom = null
+                        } else {
+                            passwordError = true
+                        }
+                    }) {
+                        Text("Gir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingRoom = null }) {
+                        Text("İptal")
+                    }
+                }
+            )
         }
 
         if (showCreateDialog) {

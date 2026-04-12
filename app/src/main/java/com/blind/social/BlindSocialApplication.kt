@@ -4,14 +4,18 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import io.github.jan.supabase.realtime.realtime
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class BlindSocialApplication : Application() {
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     override fun onCreate() {
         super.onCreate()
 
-        GlobalScope.launch {
+        applicationScope.launch {
             try {
                 SupabaseModul.client.realtime.connect()
             } catch (e: Exception) {

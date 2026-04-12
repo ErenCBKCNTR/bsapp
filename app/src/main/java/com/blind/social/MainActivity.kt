@@ -104,7 +104,7 @@ fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isD
                 onNavigateToRegister = { navController.navigate("register") },
                 onLoginSuccess = {
                     navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
@@ -114,8 +114,7 @@ fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isD
                 onNavigateToLogin = { navController.popBackStack() },
                 onRegisterSuccess = {
                     navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
-                        popUpTo("register") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )

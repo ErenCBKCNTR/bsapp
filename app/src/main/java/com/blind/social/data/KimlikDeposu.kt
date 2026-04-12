@@ -22,9 +22,10 @@ class KimlikDeposu {
                 this.email = email
                 this.password = sifre
 
-                // Add username to user metadata for mentions
+                // Trigger ve mention işlemleri için metadata
                 val metadata = buildJsonObject {
                     put("username", kullaniciAdi)
+                    put("ad_soyad", adSoyad)
                 }
                 this.data = metadata
             }

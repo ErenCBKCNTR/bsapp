@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import android.util.Log
 import io.github.jan.supabase.realtime.RealtimeChannel
@@ -36,7 +37,8 @@ class OdaDeposu {
             trySend(Result.success(currentList.toList()))
 
             // Then listen for changes
-            val channel = SupabaseModul.client.realtime.channel("odalar-changes")
+            val channelName = "odalar-changes-${System.currentTimeMillis()}"
+            val channel = SupabaseModul.client.realtime.channel(channelName)
             val changeFlow = channel.postgresChangeFlow<PostgresAction>("public") {
                 table = "odalar"
             }
@@ -81,7 +83,10 @@ class OdaDeposu {
 
             awaitClose {
                 job.cancel()
-                coroutineScope.launch { channel.unsubscribe() }
+                coroutineScope.launch {
+                    try { channel.unsubscribe() } catch (_: Exception) {}
+                }
+                coroutineScope.cancel()
             }
         } catch (e: Exception) {
             trySend(Result.failure(e))

@@ -40,7 +40,8 @@ class MesajDeposu {
             trySend(Result.success(currentList.toList()))
 
             // 2. Realtime Kanalını Kur
-            val channel = SupabaseModul.client.realtime.channel("mesajlar-changes-$odaId")
+            val channelName = "mesajlar-changes-$odaId-${System.currentTimeMillis()}"
+            val channel = SupabaseModul.client.realtime.channel(channelName)
             val changeFlow = channel.postgresChangeFlow<PostgresAction>("public") {
                 table = "mesajlar"
                 filter = "oda_id=eq.$odaId"

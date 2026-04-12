@@ -74,8 +74,9 @@ BEGIN
     new.id,
     new.email,
     new.raw_user_meta_data->>'username',
-    new.raw_user_meta_data->>'username'
-  );
+    COALESCE(new.raw_user_meta_data->>'ad_soyad', new.raw_user_meta_data->>'username')
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

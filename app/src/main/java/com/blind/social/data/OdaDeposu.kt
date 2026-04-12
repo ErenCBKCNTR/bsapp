@@ -54,15 +54,15 @@ class OdaDeposu {
                     when (action) {
                         is PostgresAction.Insert -> {
                             val newOda = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Oda>(action.record)
-                            currentList.add(newOda)
-                            trySend(Result.success(currentList.toList()))
+                            currentList = currentList.toMutableList().apply { add(newOda) }
+                            trySend(Result.success(currentList))
                         }
                         is PostgresAction.Update -> {
                             val updatedOda = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Oda>(action.record)
                             val index = currentList.indexOfFirst { it.id == updatedOda.id }
                             if (index != -1) {
-                                currentList[index] = updatedOda
-                                trySend(Result.success(currentList.toList()))
+                                currentList = currentList.toMutableList().apply { this[index] = updatedOda }
+                                trySend(Result.success(currentList))
                             }
                         }
                         is PostgresAction.Delete -> {
@@ -70,8 +70,8 @@ class OdaDeposu {
                                 if (it.isString) it.content else it.content
                             }
                             if (deletedId != null) {
-                                currentList.removeAll { it.id == deletedId }
-                                trySend(Result.success(currentList.toList()))
+                                currentList = currentList.toMutableList().apply { removeAll { it.id == deletedId } }
+                                trySend(Result.success(currentList))
                             }
                         }
                         else -> {}

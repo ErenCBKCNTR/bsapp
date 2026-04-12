@@ -28,8 +28,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.text.style.TextAlign
 
@@ -481,7 +479,7 @@ fun ChatScreen(
                                 Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
                             }
 
-                            val timeText = try {
+                                                        val timeText = try {
                                 mesaj.olusturmaTarihi?.let { dateStr ->
                                     val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
                                     val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())

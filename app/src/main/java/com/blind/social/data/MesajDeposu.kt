@@ -63,14 +63,14 @@ class MesajDeposu {
                     when (action) {
                         is PostgresAction.Insert -> {
                             val newMesaj = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Mesaj>(action.record)
-                            currentList.add(newMesaj)
-                            trySend(Result.success(currentList.toList()))
+                            currentList = currentList.toMutableList().apply { add(newMesaj) }
+                            trySend(Result.success(currentList))
                         }
                         is PostgresAction.Delete -> {
                             val deletedId = action.oldRecord["id"]?.jsonPrimitive?.content
                             if (deletedId != null) {
-                                currentList.removeAll { it.id == deletedId }
-                                trySend(Result.success(currentList.toList()))
+                                currentList = currentList.toMutableList().apply { removeAll { it.id == deletedId } }
+                                trySend(Result.success(currentList))
                             }
                         }
                         else -> {}

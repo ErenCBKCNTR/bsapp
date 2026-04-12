@@ -19,7 +19,10 @@ data class Mesaj(
     val gonderenKullaniciAdi: String? = null,
     @SerialName("profiller")
     val profil: ProfilKatilimci? = null
-)
+) {
+    @kotlinx.serialization.Transient
+    var sendStatus: String = "sent" // "pending", "sent", "error"
+}
 
 @Serializable
 data class ProfilKatilimci(

@@ -26,6 +26,10 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.text.style.TextAlign
 
@@ -37,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,6 +76,7 @@ fun ChatScreen(
     var isRecording by remember { mutableStateOf(false) }
     var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var audioFile by remember { mutableStateOf<File?>(null) }
+    var localPendingMessages by remember { mutableStateOf(emptyList<Mesaj>()) }
 
     val themePreferences = remember { ThemePreferences(context) }
     val autoRead by themePreferences.autoReadMessages.collectAsState(initial = false)
@@ -78,6 +84,9 @@ fun ChatScreen(
 
     val currentUser = SupabaseModul.client.auth.currentUserOrNull()
     val isCreator = currentUser?.id == creatorId
+    val combinedMessages = remember(mesajlar, localPendingMessages) {
+        (mesajlar + localPendingMessages).sortedBy { it.olusturmaTarihi ?: "9999" }
+    }
 
     var selectedMessage by remember { mutableStateOf<Mesaj?>(null) }
     var showModDialog by remember { mutableStateOf(false) }
@@ -396,7 +405,7 @@ fun ChatScreen(
                 .padding(16.dp),
             reverseLayout = true
         ) {
-            items(mesajlar.reversed()) { mesaj ->
+            items(combinedMessages.reversed()) { mesaj ->
                 val isMyMessage = mesaj.gonderenId == currentUser?.id
 
                 Row(
@@ -417,12 +426,16 @@ fun ChatScreen(
                                     }
                                 }
                             )
-                            .semantics {
+                            .clearAndSetSemantics {
                                 if (autoRead) {
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                                 }
                                 val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
-                                contentDescription = "$senderName: ${mesaj.metin}"
+                                contentDescription = if (mesaj.mesajTipi == "ses") {
+                                    "$senderName kişisinden sesli mesaj. Oynatmak veya duraklatmak için çift dokunun."
+                                } else {
+                                    "$senderName: ${mesaj.metin}"
+                                }
                             },
                         colors = CardDefaults.cardColors(
                             containerColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
@@ -459,11 +472,12 @@ fun ChatScreen(
                                 Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
                             }
 
-                                                        val timeText = try {
+                            val timeText = try {
                                 mesaj.olusturmaTarihi?.let { dateStr ->
+                                    val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
                                     val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
                                     parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                                    val date = parser.parse(dateStr)
+                                    val date = parser.parse(cleanStr)
                                     val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                                     formatter.timeZone = java.util.TimeZone.getDefault()
                                     formatter.format(date!!)
@@ -482,13 +496,29 @@ fun ChatScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Okundu",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
+                                if (mesaj.gonderenId == currentUser?.id) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    when (mesaj.sendStatus) {
+                                        "pending" -> Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = "Gönderilmeyi bekliyor",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        "error" -> Icon(
+                                            imageVector = Icons.Default.ErrorOutline,
+                                            contentDescription = "Gönderilemedi",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                        else -> Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Gönderildi",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

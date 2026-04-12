@@ -42,6 +42,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.Role.Companion.Button
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -431,10 +435,15 @@ fun ChatScreen(
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                                 }
                                 val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
-                                contentDescription = if (mesaj.mesajTipi == "ses") {
-                                    "$senderName kişisinden sesli mesaj. Oynatmak veya duraklatmak için çift dokunun."
+                                if (mesaj.mesajTipi == "ses") {
+                                    contentDescription = "$senderName kişisinden sesli mesaj. Oynatmak veya duraklatmak için çift dokunun."
+                                    role = Role.Button
+                                    onClick(label = "Oynat veya Duraklat") {
+                                        toggleAudioPlayback(mesaj.metin, mesaj.id)
+                                        true
+                                    }
                                 } else {
-                                    "$senderName: ${mesaj.metin}"
+                                    contentDescription = "$senderName: ${mesaj.metin}"
                                 }
                             },
                         colors = CardDefaults.cardColors(

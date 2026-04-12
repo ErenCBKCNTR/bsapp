@@ -16,6 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
+import android.util.Log
+import io.github.jan.supabase.realtime.RealtimeChannel
+
 
 class OdaDeposu {
 
@@ -37,10 +40,17 @@ class OdaDeposu {
             val changeFlow = channel.postgresChangeFlow<PostgresAction>("public") {
                 table = "odalar"
             }
+
+            coroutineScope.launch {
+                channel.status.collect { status ->
+                    Log.d("Realtime", "OdaDeposu channel status: $status")
+                }
+            }
             channel.subscribe()
 
             val job = coroutineScope.launch {
                 changeFlow.collect { action ->
+                    Log.d("Realtime", "OdaDeposu Postgres action: $action")
                     when (action) {
                         is PostgresAction.Insert -> {
                             val newOda = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Oda>(action.record)

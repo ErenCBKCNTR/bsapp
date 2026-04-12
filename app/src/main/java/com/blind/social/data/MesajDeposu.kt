@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.awaitClose
+import android.util.Log
+import io.github.jan.supabase.realtime.RealtimeChannel
+
 import kotlinx.coroutines.CoroutineScope
 import io.github.jan.supabase.postgrest.query.Columns
 
@@ -46,10 +49,17 @@ class MesajDeposu {
                 table = "mesajlar"
                 filter = "oda_id=eq.$odaId"
             }
-            channel.subscribe()
+
+            coroutineScope.launch {
+                channel.status.collect { status ->
+                    Log.d("Realtime", "MesajDeposu channel status: $status")
+                }
+            }
+            channel.subscribe(blockUntilSubscribed = false)
 
             val job = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
                 changeFlow.collect { action ->
+                    Log.d("Realtime", "MesajDeposu Postgres action: $action")
                     when (action) {
                         is PostgresAction.Insert -> {
                             val newMesaj = Json { ignoreUnknownKeys = true }.decodeFromJsonElement<Mesaj>(action.record)

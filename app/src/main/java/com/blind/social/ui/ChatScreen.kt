@@ -96,6 +96,18 @@ fun ChatScreen(
     var isRecordingPaused by remember { mutableStateOf(false) }
     var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var audioFile by remember { mutableStateOf<File?>(null) }
+
+    val accessibilityView = androidx.compose.ui.platform.LocalView.current
+
+    LaunchedEffect(isRecording, isRecordingPaused) {
+        if (isRecording) {
+            if (isRecordingPaused) {
+                accessibilityView.announceForAccessibility("Kayıt duraklatıldı.")
+            } else {
+                accessibilityView.announceForAccessibility("Kayıt devam ediyor.")
+            }
+        }
+    }
     var localPendingMessages by remember { mutableStateOf(emptyList<Mesaj>()) }
 
     val themePreferences = remember { ThemePreferences(context) }
@@ -413,49 +425,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (isRecording) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { cancelRecording() },
-                                modifier = Modifier.semantics { contentDescription = "Kaydı iptal et" }
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                IconButton(
-                                    onClick = {
-                                        try {
-                                            if (isRecordingPaused) {
-                                                mediaRecorder?.resume()
-                                                isRecordingPaused = false
-                                            } else {
-                                                mediaRecorder?.pause()
-                                                isRecordingPaused = true
-                                            }
-                                            triggerVibration()
-                                        } catch (e: Exception) { e.printStackTrace() }
-                                    },
-                                    modifier = Modifier.semantics {
-                                        contentDescription = if (isRecordingPaused) "Kayda devam et" else "Kaydı duraklat"
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = if (isRecordingPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
-                            Text(
-                                text = if (isRecordingPaused) "Duraklatıldı" else "Kaydediliyor...",
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(start = 8.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
-                            )
-                        }
-                    } else {
+                    if (!isRecording) {
                         TextField(
                             value = messageText,
                             onValueChange = { messageText = it },
@@ -463,9 +433,7 @@ fun ChatScreen(
                             placeholder = { Text("Mesaj yaz...") },
                             singleLine = true
                         )
-                    }
 
-                    if (!isRecording) {
                         IconButton(
                             onClick = {
                                 if (messageText.isNotBlank()) {
@@ -498,33 +466,86 @@ fun ChatScreen(
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Gönder")
                         }
-                    }
 
-                    IconButton(
-                        onClick = {
-                            if (!isRecording) {
+                        IconButton(
+                            onClick = {
                                 checkPermissionsAndRun {
                                     startRecording()
                                 }
-                            } else {
-                                stopRecordingAndSend { errorMsg ->
-                                    coroutineScope.launch {
-                                        if (errorMsg != null) {
-                                            snackbarHostState.showSnackbar(errorMsg)
+                            },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Sesli mesaj kaydetmek için çift dokunun"
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = LocalContentColor.current
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { cancelRecording() },
+                                modifier = Modifier.semantics { contentDescription = "Kaydı iptal et" }
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    stopRecordingAndSend { errorMsg ->
+                                        coroutineScope.launch {
+                                            if (errorMsg != null) {
+                                                snackbarHostState.showSnackbar(errorMsg)
+                                            }
                                         }
                                     }
+                                },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Kaydı bitir ve gönder"
                                 }
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(48.dp) // Make the main recording button more prominent
+                                )
                             }
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = if (isRecording) "Kaydı bitir ve gönder" else "Sesli mesaj kaydetmek için çift dokunun"
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            if (isRecordingPaused) {
+                                                mediaRecorder?.resume()
+                                                isRecordingPaused = false
+                                            } else {
+                                                mediaRecorder?.pause()
+                                                isRecordingPaused = true
+                                            }
+                                            triggerVibration()
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = if (isRecordingPaused) "Kayda devam et" else "Kaydı duraklat"
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (isRecordingPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null
+                                    )
+                                }
+                            } else {
+                                // Provide a placeholder space to maintain centering of the Mic button if API < N
+                                Spacer(modifier = Modifier.size(48.dp))
+                            }
                         }
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
-                        )
                     }
                 }
             }
@@ -651,18 +672,6 @@ fun ChatScreen(
                                             )
                                         }
 
-                                        if (playingMessageId == mesaj.id) {
-                                            LinearProgressIndicator(
-                                                progress = { playbackProgress },
-                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                                            )
-                                        } else {
-                                            LinearProgressIndicator(
-                                                progress = { 0f },
-                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                                            )
-                                        }
-
                                         val speeds = listOf(1.0f, 1.5f, 2.0f)
                                         TextButton(
                                             onClick = {
@@ -672,12 +681,24 @@ fun ChatScreen(
                                                     globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
                                                 }
                                             },
-                                            modifier = Modifier.semantics {
+                                            modifier = Modifier.clearAndSetSemantics {
                                                 contentDescription = "Oynatma hızı: ${currentPlaybackSpeed} katı"
                                                 role = Role.Button
                                             }
                                         ) {
                                             Text("${currentPlaybackSpeed}x")
+                                        }
+
+                                        if (playingMessageId == mesaj.id) {
+                                            LinearProgressIndicator(
+                                                progress = { playbackProgress },
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { }
+                                            )
+                                        } else {
+                                            LinearProgressIndicator(
+                                                progress = { 0f },
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { }
+                                            )
                                         }
                                     }
                                     if (playingMessageId == mesaj.id) {

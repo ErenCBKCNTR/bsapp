@@ -15,7 +15,7 @@ import com.blind.social.prefs.ThemePreferences
 import kotlinx.coroutines.launch
 
 @Composable
-fun PrivacySettingsScreen() {
+fun PrivacySettingsScreen(isDesign2: Boolean = false, onToggleDesign2: ((Boolean) -> Unit)? = null) {
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
     val autoRead by themePreferences.autoReadMessages.collectAsState(initial = false)
@@ -67,6 +67,27 @@ fun PrivacySettingsScreen() {
                 },
                 modifier = Modifier.semantics { contentDescription = "Titreşimi ${if (haptic) "kapat" else "aç"}" }
             )
+        }
+
+        if (onToggleDesign2 != null) {
+            Text("Tema Seçimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp, bottom = 16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Tema 2 (Tasarım 2)")
+                Switch(
+                    checked = isDesign2,
+                    onCheckedChange = {
+                        onToggleDesign2(it)
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Tema 2'ye geçişi ${if (isDesign2) "kapatıp Tema 1'e dön" else "aç"}" }
+                )
+            }
         }
     }
 }

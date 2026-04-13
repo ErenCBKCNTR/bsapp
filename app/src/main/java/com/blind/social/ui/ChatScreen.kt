@@ -52,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -420,9 +421,13 @@ fun ChatScreen(
             }
         },
         bottomBar = {
-            BottomAppBar {
+            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+            Surface(
+                color = if (isDesign2) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (!isRecording) {
@@ -431,57 +436,108 @@ fun ChatScreen(
                             onValueChange = { messageText = it },
                             modifier = Modifier.weight(1f).padding(end = 8.dp),
                             placeholder = { Text("Mesaj yaz...") },
-                            singleLine = true
+                            singleLine = true,
+                            colors = if (isDesign2) TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else TextFieldDefaults.colors()
                         )
 
-                        IconButton(
-                            onClick = {
-                                if (messageText.isNotBlank()) {
-                                    val pendingText = messageText
-                                    messageText = ""
-                                    val currentUsername = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Sen"
-                                    val pendingMsg = Mesaj(
-                                        id = "pending-${System.currentTimeMillis()}",
-                                        odaId = roomId,
-                                        gonderenId = currentUser?.id ?: "",
-                                        metin = pendingText,
-                                        gonderenKullaniciAdi = currentUsername
-                                    ).also { it.sendStatus = "pending" }
-                                    localPendingMessages = localPendingMessages + pendingMsg
+                        if (isDesign2) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                                    .clickable {
+                                        if (messageText.isNotBlank()) {
+                                            val pendingText = messageText
+                                            messageText = ""
+                                            val currentUsername = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Sen"
+                                            val pendingMsg = Mesaj(
+                                                id = "pending-${System.currentTimeMillis()}",
+                                                odaId = roomId,
+                                                gonderenId = currentUser?.id ?: "",
+                                                metin = pendingText,
+                                                gonderenKullaniciAdi = currentUsername
+                                            ).also { it.sendStatus = "pending" }
+                                            localPendingMessages = localPendingMessages + pendingMsg
 
-                                    coroutineScope.launch {
-                                        val result = mesajDeposu.mesajGonder(roomId, pendingText)
-                                        localPendingMessages = localPendingMessages.filter { it.id != pendingMsg.id }
-                                        if (result.isSuccess) {
-                                            triggerVibration()
+                                            coroutineScope.launch {
+                                                val result = mesajDeposu.mesajGonder(roomId, pendingText)
+                                                localPendingMessages = localPendingMessages.filter { it.id != pendingMsg.id }
+                                                if (result.isSuccess) {
+                                                    triggerVibration()
+                                                } else {
+                                                    val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
+                                                    val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
+                                                    snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
+                                                }
+                                            }
                                         } else {
-                                            val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
-                                            val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
-                                            snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
+                                            checkPermissionsAndRun {
+                                                startRecording()
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            modifier = Modifier.semantics { contentDescription = "Mesajı gönder" }
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Gönder")
-                        }
-
-                        IconButton(
-                            onClick = {
-                                checkPermissionsAndRun {
-                                    startRecording()
-                                }
-                            },
-                            modifier = Modifier.semantics {
-                                contentDescription = "Sesli mesaj kaydetmek için çift dokunun"
+                                    .semantics {
+                                        contentDescription = if (messageText.isNotBlank()) "Mesajı gönder" else "Sesli mesaj kaydetmek için çift dokunun"
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (messageText.isNotBlank()) Icons.AutoMirrored.Filled.Send else Icons.Default.Mic,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
                             }
-                        ) {
-                            Icon(
-                                Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = LocalContentColor.current
-                            )
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    if (messageText.isNotBlank()) {
+                                        val pendingText = messageText
+                                        messageText = ""
+                                        val currentUsername = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Sen"
+                                        val pendingMsg = Mesaj(
+                                            id = "pending-${System.currentTimeMillis()}",
+                                            odaId = roomId,
+                                            gonderenId = currentUser?.id ?: "",
+                                            metin = pendingText,
+                                            gonderenKullaniciAdi = currentUsername
+                                        ).also { it.sendStatus = "pending" }
+                                        localPendingMessages = localPendingMessages + pendingMsg
+
+                                        coroutineScope.launch {
+                                            val result = mesajDeposu.mesajGonder(roomId, pendingText)
+                                            localPendingMessages = localPendingMessages.filter { it.id != pendingMsg.id }
+                                            if (result.isSuccess) {
+                                                triggerVibration()
+                                            } else {
+                                                val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
+                                                val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
+                                                snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.semantics { contentDescription = "Mesajı gönder" }
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Gönder")
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    checkPermissionsAndRun {
+                                        startRecording()
+                                    }
+                                },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Sesli mesaj kaydetmek için çift dokunun"
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = null,
+                                    tint = LocalContentColor.current
+                                )
+                            }
                         }
                     } else {
                         Row(
@@ -493,29 +549,57 @@ fun ChatScreen(
                                 onClick = { cancelRecording() },
                                 modifier = Modifier.semantics { contentDescription = "Kaydı iptal et" }
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             }
 
-                            IconButton(
-                                onClick = {
-                                    stopRecordingAndSend { errorMsg ->
-                                        coroutineScope.launch {
-                                            if (errorMsg != null) {
-                                                snackbarHostState.showSnackbar(errorMsg)
+                            if (isDesign2) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                        .clickable {
+                                            stopRecordingAndSend { errorMsg ->
+                                                coroutineScope.launch {
+                                                    if (errorMsg != null) {
+                                                        snackbarHostState.showSnackbar(errorMsg)
+                                                    }
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Kaydı bitir ve gönder"
+                                        .semantics {
+                                            contentDescription = "Kaydı bitir ve gönder"
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    Icons.Default.Mic,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(48.dp) // Make the main recording button more prominent
-                                )
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        stopRecordingAndSend { errorMsg ->
+                                            coroutineScope.launch {
+                                                if (errorMsg != null) {
+                                                    snackbarHostState.showSnackbar(errorMsg)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Kaydı bitir ve gönder"
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(48.dp) // Make the main recording button more prominent
+                                    )
+                                }
                             }
 
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -538,7 +622,8 @@ fun ChatScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (isRecordingPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                        contentDescription = null
+                                        contentDescription = null,
+                                        tint = if (isDesign2) MaterialTheme.colorScheme.onBackground else LocalContentColor.current
                                     )
                                 }
                             } else {

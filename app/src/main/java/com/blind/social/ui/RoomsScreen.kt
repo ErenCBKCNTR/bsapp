@@ -1,29 +1,41 @@
 package com.blind.social.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.blind.social.data.Oda
 import com.blind.social.data.OdaDeposu
+import com.blind.social.prefs.ThemePreferences
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
+    val context = LocalContext.current
+    val themePreferences = remember { ThemePreferences(context) }
+    val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+
     val odaDeposu = remember { OdaDeposu() }
     val coroutineScope = rememberCoroutineScope()
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -34,7 +46,7 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     var passwordInput by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf(false) }
 
-    // Filters
+    // Filters (Only actively used if NOT Design 2, or modified for Design 2)
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Tümü") }
     var showOnlyUnprotected by remember { mutableStateOf(false) }
@@ -57,145 +69,144 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     }
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateDialog = true },
-                modifier = Modifier.semantics { contentDescription = "Yeni oda oluşturmak için çift dokunun" }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Oluştur")
+        topBar = {
+            if (isDesign2) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "BLIND SOCIAL",
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.semantics { heading() }
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                )
             }
-        }
+        },
+        floatingActionButton = {
+            if (isDesign2) {
+                LargeFloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.semantics { contentDescription = "Yeni Oda Oluştur" }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(36.dp))
+                }
+            } else {
+                FloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    modifier = Modifier.semantics { contentDescription = "Yeni oda oluşturmak için çift dokunun" }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Oluştur")
+                }
+            }
+        },
+        containerColor = if (isDesign2) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Filter Section
-            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Oda Ara") },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    singleLine = true
+            if (isDesign2) {
+                Text(
+                    "Aktif Odalar",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
+            } else {
+                // Filter Section for Original Design
+                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp, top = 16.dp)) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Oda Ara") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        singleLine = true
+                    )
 
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedCategoryFilter,
-                        onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
-                        modifier = Modifier.weight(1f).padding(end = 8.dp)
-                    ) {
-                        TextField(
-                            readOnly = true,
-                            value = selectedCategory,
-                            onValueChange = {},
-                            label = { Text("Kategori") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
-                            colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        ExposedDropdownMenuBox(
                             expanded = expandedCategoryFilter,
-                            onDismissRequest = { expandedCategoryFilter = false }
+                            onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
+                            modifier = Modifier.weight(1f).padding(end = 8.dp)
                         ) {
-                            filterCategories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat) },
-                                    onClick = {
-                                        selectedCategory = cat
-                                        expandedCategoryFilter = false
-                                    }
-                                )
+                            TextField(
+                                readOnly = true,
+                                value = selectedCategory,
+                                onValueChange = {},
+                                label = { Text("Kategori") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
+                                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+                                modifier = Modifier.menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedCategoryFilter,
+                                onDismissRequest = { expandedCategoryFilter = false }
+                            ) {
+                                filterCategories.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat) },
+                                        onClick = {
+                                            selectedCategory = cat
+                                            expandedCategoryFilter = false
+                                        }
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Sadece Şifresiz")
-                        Switch(
-                            checked = showOnlyUnprotected,
-                            onCheckedChange = { showOnlyUnprotected = it },
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Sadece Şifresiz")
+                            Switch(
+                                checked = showOnlyUnprotected,
+                                onCheckedChange = { showOnlyUnprotected = it },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                     }
                 }
             }
 
             // Room List
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(filteredRooms) { room ->
-                    val isProtected = !room.sifre.isNullOrBlank()
-                    val sifreDurumuText = if (isProtected) "Şifreli" else "Şifresiz"
-                    val a11yDesc = "${room.odaAdi}, ${room.kategori}, ${room.kapasite} kişilik, $sifreDurumuText. Bağlanmak için çift dokunun"
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = a11yDesc
-                            },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = room.odaAdi,
-                                    style = MaterialTheme.typography.titleLarge
+            if (rooms.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = if (isDesign2) Arrangement.spacedBy(16.dp) else Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(if (isDesign2) rooms else filteredRooms) { room ->
+                        if (isDesign2) {
+                            Design2RoomCard(room = room, onClick = {
+                                handleRoomClick(
+                                    room,
+                                    { pendingRoom = it; passwordInput = ""; passwordError = false },
+                                    { rId, rName, cId -> onNavigateToChat(rId, rName, cId) }
                                 )
-                                if (isProtected) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Text(
-                                            text = "Şifreli Oda",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(start = 4.dp),
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            }
-
-                            Text(
-                                text = "Kategori: ${room.kategori} | ${room.kapasite} Kişilik Kapasite",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
-                            )
-
-                            Button(
-                                onClick = {
-                                    room.id?.let { roomId ->
-                                        if (!room.sifre.isNullOrBlank()) {
-                                            // Şifreli oda: önce şifre sor
-                                            pendingRoom = room
-                                            passwordInput = ""
-                                            passwordError = false
-                                        } else {
-                                            val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
-                                            onNavigateToChat(roomId, encodedName, room.kurucuId)
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("Odaya Bağlan")
-                            }
+                            })
+                        } else {
+                            OriginalRoomCard(room = room, onClick = {
+                                handleRoomClick(
+                                    room,
+                                    { pendingRoom = it; passwordInput = ""; passwordError = false },
+                                    { rId, rName, cId -> onNavigateToChat(rId, rName, cId) }
+                                )
+                            })
                         }
                     }
                 }
             }
         }
 
-        // Şifreli oda giriş dialogu
+        // Password Dialog
         if (pendingRoom != null) {
             AlertDialog(
                 onDismissRequest = { pendingRoom = null },
@@ -262,6 +273,129 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     }
 }
 
+private fun handleRoomClick(
+    room: Oda,
+    onRequirePassword: (Oda) -> Unit,
+    onNavigate: (String, String, String?) -> Unit
+) {
+    room.id?.let { roomId ->
+        if (!room.sifre.isNullOrBlank()) {
+            onRequirePassword(room)
+        } else {
+            val encodedName = java.net.URLEncoder.encode(room.odaAdi, "UTF-8")
+            onNavigate(roomId, encodedName, room.kurucuId)
+        }
+    }
+}
+
+@Composable
+fun OriginalRoomCard(room: Oda, onClick: () -> Unit) {
+    val isProtected = !room.sifre.isNullOrBlank()
+    val sifreDurumuText = if (isProtected) "Şifreli" else "Şifresiz"
+    val a11yDesc = "${room.odaAdi}, ${room.kategori}, ${room.kapasite} kişilik, $sifreDurumuText. Bağlanmak için çift dokunun"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = a11yDesc
+            },
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = room.odaAdi,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                if (isProtected) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(
+                            text = "Şifreli Oda",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 4.dp),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "Kategori: ${room.kategori} | ${room.kapasite} Kişilik Kapasite",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+            )
+
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Odaya Bağlan")
+            }
+        }
+    }
+}
+
+@Composable
+fun Design2RoomCard(room: Oda, onClick: () -> Unit) {
+    val isProtected = !room.sifre.isNullOrBlank()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${room.odaAdi}, ${if (isProtected) "Şifreli " else ""}Oda. Girmek için çift tıklayın."
+            },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isProtected) Icons.Default.Lock else Icons.Default.GraphicEq,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = room.odaAdi,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${room.kapasite} Kişi Kapasiteli",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateRoomDialog(
@@ -292,7 +426,6 @@ fun CreateRoomDialog(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                 )
 
-                // Capacity Dropdown
                 ExposedDropdownMenuBox(
                     expanded = expandedCapacity,
                     onExpandedChange = { expandedCapacity = !expandedCapacity },
@@ -323,7 +456,6 @@ fun CreateRoomDialog(
                     }
                 }
 
-                // Category Dropdown
                 ExposedDropdownMenuBox(
                     expanded = expandedCategory,
                     onExpandedChange = { expandedCategory = !expandedCategory },
@@ -354,7 +486,6 @@ fun CreateRoomDialog(
                     }
                 }
 
-                // Password
                 TextField(
                     value = sifre,
                     onValueChange = { newValue ->

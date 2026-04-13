@@ -55,25 +55,14 @@ fun MainShell(
                 )
 
                 NavigationDrawerItem(
-                    label = { Text(if (isDesign2) "Orijinal Tasarıma Dön" else "Tasarım 2'ye Geç") },
-                    selected = false,
-                    onClick = {
-                        onToggleDesign2(!isDesign2)
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    icon = { Icon(Icons.Default.Style, contentDescription = "Tasarım Değiştir") },
-                    modifier = Modifier.semantics { contentDescription = "Uygulama tasarımını değiştirmek için çift dokunun" }
-                )
-
-                NavigationDrawerItem(
-                    label = { Text("Gizlilik Ayarları") },
+                    label = { Text("Uygulama Ayarları") },
                     selected = currentRoute == "privacy",
                     onClick = {
                         navController.navigate("privacy")
                         coroutineScope.launch { drawerState.close() }
                     },
-                    icon = { Icon(Icons.Default.Security, contentDescription = "Gizlilik Ayarları") },
-                    modifier = Modifier.semantics { contentDescription = "Gizlilik ayarları için çift dokunun" }
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Uygulama Ayarları") },
+                    modifier = Modifier.semantics { contentDescription = "Uygulama ayarları için çift dokunun" }
                 )
 
                 NavigationDrawerItem(
@@ -159,7 +148,12 @@ fun MainShell(
                 }
                 composable("messages") { MessagesScreen() }
                 composable("profile") { ProfileScreen() }
-                composable("privacy") { PrivacySettingsScreen() }
+                composable("privacy") {
+                    PrivacySettingsScreen(
+                        isDesign2 = isDesign2,
+                        onToggleDesign2 = onToggleDesign2
+                    )
+                }
                 composable("about") { AboutScreen() }
 
                 composable(

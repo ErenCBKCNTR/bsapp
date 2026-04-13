@@ -27,6 +27,10 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Delete
@@ -34,6 +38,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.text.style.TextAlign
 
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Close
 import android.media.PlaybackParams
 import kotlinx.coroutines.delay
 import androidx.compose.material3.*
@@ -44,6 +55,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
@@ -80,6 +93,7 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
 
     var isRecording by remember { mutableStateOf(false) }
+    var isRecordingPaused by remember { mutableStateOf(false) }
     var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var audioFile by remember { mutableStateOf<File?>(null) }
     var localPendingMessages by remember { mutableStateOf(emptyList<Mesaj>()) }
@@ -195,10 +209,24 @@ fun ChatScreen(
             recorder.start()
             mediaRecorder = recorder
             isRecording = true
+            isRecordingPaused = false
             triggerVibration()
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun cancelRecording() {
+        try {
+            mediaRecorder?.stop()
+            mediaRecorder?.release()
+        } catch (e: Exception) { }
+        mediaRecorder = null
+        isRecording = false
+        isRecordingPaused = false
+        audioFile?.delete()
+        audioFile = null
+        triggerVibration()
     }
 
     fun stopRecordingAndSend(onResult: (String?) -> Unit) {
@@ -385,66 +413,118 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
-                        placeholder = { Text("Mesaj yaz...") },
-                        singleLine = true
-                    )
-                    IconButton(
-                        onClick = {
-                            if (messageText.isNotBlank()) {
-                                coroutineScope.launch {
-                                    val result = mesajDeposu.mesajGonder(roomId, messageText)
-                                    if (result.isSuccess) {
-                                        messageText = ""
-                                        triggerVibration()
-                                    } else {
-                                        val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
-                                        val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
-                                        snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
+                    if (isRecording) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { cancelRecording() },
+                                modifier = Modifier.semantics { contentDescription = "Kaydı iptal et" }
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            if (isRecordingPaused) {
+                                                mediaRecorder?.resume()
+                                                isRecordingPaused = false
+                                            } else {
+                                                mediaRecorder?.pause()
+                                                isRecordingPaused = true
+                                            }
+                                            triggerVibration()
+                                        } catch (e: Exception) { e.printStackTrace() }
+                                    },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = if (isRecordingPaused) "Kayda devam et" else "Kaydı duraklat"
                                     }
+                                ) {
+                                    Icon(
+                                        imageVector = if (isRecordingPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = null
+                                    )
                                 }
                             }
-                        },
-                        modifier = Modifier.semantics { contentDescription = "Mesajı gönder" }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Gönder")
+                            Text(
+                                text = if (isRecordingPaused) "Duraklatıldı" else "Kaydediliyor...",
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(start = 8.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+                            )
+                        }
+                    } else {
+                        TextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            modifier = Modifier.weight(1f).padding(end = 8.dp),
+                            placeholder = { Text("Mesaj yaz...") },
+                            singleLine = true
+                        )
                     }
+
+                    if (!isRecording) {
+                        IconButton(
+                            onClick = {
+                                if (messageText.isNotBlank()) {
+                                    val pendingText = messageText
+                                    messageText = ""
+                                    val currentUsername = currentUser?.userMetadata?.get("username")?.jsonPrimitive?.content ?: "Sen"
+                                    val pendingMsg = Mesaj(
+                                        id = "pending-${System.currentTimeMillis()}",
+                                        odaId = roomId,
+                                        gonderenId = currentUser?.id ?: "",
+                                        metin = pendingText,
+                                        gonderenKullaniciAdi = currentUsername
+                                    ).also { it.sendStatus = "pending" }
+                                    localPendingMessages = localPendingMessages + pendingMsg
+
+                                    coroutineScope.launch {
+                                        val result = mesajDeposu.mesajGonder(roomId, pendingText)
+                                        localPendingMessages = localPendingMessages.filter { it.id != pendingMsg.id }
+                                        if (result.isSuccess) {
+                                            triggerVibration()
+                                        } else {
+                                            val errorMsg = result.exceptionOrNull()?.localizedMessage ?: "Bilinmeyen hata"
+                                            val displayMsg = errorMsg.substringBefore('\n').take(60) + if (errorMsg.length > 60) "..." else ""
+                                            snackbarHostState.showSnackbar("Mesaj gönderilemedi: $displayMsg")
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Mesajı gönder" }
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Gönder")
+                        }
+                    }
+
                     IconButton(
-                        onClick = { },
-                        modifier = Modifier
-                            .semantics { contentDescription = "Sesli mesaj kaydetmek için basılı tutun" }
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        when (event.changes.first().pressed) {
-                                            true -> {
-                                                if (!isRecording) {
-                                                    checkPermissionsAndRun {
-                                                        startRecording()
-                                                    }
-                                                }
-                                            }
-                                            false -> {
-                                                if (isRecording) {
-                                                    stopRecordingAndSend { errorMsg ->
-                                                        coroutineScope.launch {
-                                                            if (errorMsg != null) {
-                                                                snackbarHostState.showSnackbar(errorMsg)
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
+                        onClick = {
+                            if (!isRecording) {
+                                checkPermissionsAndRun {
+                                    startRecording()
+                                }
+                            } else {
+                                stopRecordingAndSend { errorMsg ->
+                                    coroutineScope.launch {
+                                        if (errorMsg != null) {
+                                            snackbarHostState.showSnackbar(errorMsg)
                                         }
                                     }
                                 }
                             }
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = if (isRecording) "Kaydı bitir ve gönder" else "Sesli mesaj kaydetmek için çift dokunun"
+                        }
                     ) {
-                        Icon(Icons.Default.Mic, contentDescription = "Mikrofon", tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current)
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
+                        )
                     }
                 }
             }
@@ -511,8 +591,19 @@ fun ChatScreen(
                                 }
                             )
                             .semantics(mergeDescendants = true) {
+
                                 if (autoRead) {
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                                }
+
+                                if (isCreator || isMyMessage) {
+                                    customActions = listOf(
+                                        CustomAccessibilityAction("Mesajı Sil") {
+                                            selectedMessage = mesaj
+                                            showModDialog = true
+                                            true
+                                        }
+                                    )
                                 }
 
                                 if (mesaj.mesajTipi == "ses") {
@@ -581,7 +672,10 @@ fun ChatScreen(
                                                     globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
                                                 }
                                             },
-                                            modifier = Modifier.clearAndSetSemantics { }
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Oynatma hızı: ${currentPlaybackSpeed} katı"
+                                                role = Role.Button
+                                            }
                                         ) {
                                             Text("${currentPlaybackSpeed}x")
                                         }

@@ -27,18 +27,31 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40
 )
 
+private val Design2ColorScheme = darkColorScheme(
+    primary = D2Primary,
+    onPrimary = D2OnPrimary,
+    secondary = D2Secondary,
+    onSecondary = D2Background,
+    background = D2Background,
+    onBackground = D2OnBackground,
+    surface = D2Surface,
+    onSurface = D2OnBackground,
+    error = D2Error
+)
+
 @Composable
 fun BlindSocialTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
+    isDesign2: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
+        isDesign2 -> Design2ColorScheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

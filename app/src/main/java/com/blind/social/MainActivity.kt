@@ -44,8 +44,9 @@ class MainActivity : ComponentActivity() {
             val context = androidx.compose.ui.platform.LocalContext.current
             val themePreferences = remember { com.blind.social.prefs.ThemePreferences(context) }
             val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = false)
+            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
 
-            BlindSocialTheme(darkTheme = isDarkMode) {
+            BlindSocialTheme(darkTheme = isDarkMode, isDesign2 = isDesign2) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     } else {
-                        AppNavigation(themePreferences, isDarkMode)
+                        AppNavigation(themePreferences, isDarkMode, isDesign2)
                     }
                 }
             }
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isDarkMode: Boolean) {
+fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isDarkMode: Boolean, isDesign2: Boolean) {
     val navController = rememberNavController()
     var startDestination by remember { mutableStateOf<String?>(null) }
 
@@ -132,6 +133,12 @@ fun AppNavigation(themePreferences: com.blind.social.prefs.ThemePreferences, isD
                 onToggleTheme = { newTheme ->
                     coroutineScope.launch {
                         themePreferences.saveThemePreference(newTheme)
+                    }
+                },
+                isDesign2 = isDesign2,
+                onToggleDesign2 = { design2 ->
+                    coroutineScope.launch {
+                        themePreferences.saveDesignPreference(design2)
                     }
                 }
             )

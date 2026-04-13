@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 fun MainShell(
     onLogoutSuccess: () -> Unit,
     isDarkMode: Boolean,
-    onToggleTheme: (Boolean) -> Unit
+    onToggleTheme: (Boolean) -> Unit,
+    isDesign2: Boolean,
+    onToggleDesign2: (Boolean) -> Unit
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -50,6 +52,17 @@ fun MainShell(
                     },
                     icon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = "Tema Değiştir") },
                     modifier = Modifier.semantics { contentDescription = "Tema değiştirmek için çift dokunun" }
+                )
+
+                NavigationDrawerItem(
+                    label = { Text(if (isDesign2) "Orijinal Tasarıma Dön" else "Tasarım 2'ye Geç") },
+                    selected = false,
+                    onClick = {
+                        onToggleDesign2(!isDesign2)
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Style, contentDescription = "Tasarım Değiştir") },
+                    modifier = Modifier.semantics { contentDescription = "Uygulama tasarımını değiştirmek için çift dokunun" }
                 )
 
                 NavigationDrawerItem(

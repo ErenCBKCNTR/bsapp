@@ -643,22 +643,23 @@ fun ChatScreen(
                                 }
                             },
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+                            containerColor = if (isMyMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                         ),
                         shape = MaterialTheme.shapes.medium.copy(
-                            bottomEnd = if (isMyMessage) androidx.compose.foundation.shape.CornerSize(0.dp) else androidx.compose.foundation.shape.CornerSize(8.dp),
-                            bottomStart = if (!isMyMessage) androidx.compose.foundation.shape.CornerSize(0.dp) else androidx.compose.foundation.shape.CornerSize(8.dp)
+                            bottomEnd = if (isMyMessage) androidx.compose.foundation.shape.CornerSize(0.dp) else androidx.compose.foundation.shape.CornerSize(16.dp),
+                            bottomStart = if (!isMyMessage) androidx.compose.foundation.shape.CornerSize(0.dp) else androidx.compose.foundation.shape.CornerSize(16.dp),
+                            topStart = androidx.compose.foundation.shape.CornerSize(16.dp),
+                            topEnd = androidx.compose.foundation.shape.CornerSize(16.dp)
                         )
                     ) {
-                        Column(modifier = Modifier.padding(8.dp)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
                             val displaySenderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
                             Text(
                                 text = displaySenderName,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clearAndSetSemantics { }
+                                modifier = Modifier.clearAndSetSemantics { }.padding(bottom = 4.dp)
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
                             if (mesaj.mesajTipi == "ses") {
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -668,7 +669,8 @@ fun ChatScreen(
                                         ) {
                                             Icon(
                                                 imageVector = if (playingMessageId == mesaj.id) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = null
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                                             )
                                         }
 
@@ -686,18 +688,22 @@ fun ChatScreen(
                                                 role = Role.Button
                                             }
                                         ) {
-                                            Text("${currentPlaybackSpeed}x")
+                                            Text("${currentPlaybackSpeed}x", color = MaterialTheme.colorScheme.onPrimaryContainer)
                                         }
 
                                         if (playingMessageId == mesaj.id) {
                                             LinearProgressIndicator(
                                                 progress = { playbackProgress },
-                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { }
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { },
+                                                color = MaterialTheme.colorScheme.primary,
+                                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                             )
                                         } else {
                                             LinearProgressIndicator(
                                                 progress = { 0f },
-                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { }
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp).clearAndSetSemantics { },
+                                                color = MaterialTheme.colorScheme.primary,
+                                                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                                             )
                                         }
                                     }
@@ -705,25 +711,30 @@ fun ChatScreen(
                                         Text(
                                             text = "Süre: ${playbackDuration / 1000}s",
                                             style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(start = 48.dp, bottom = 8.dp).clearAndSetSemantics { }
+                                            modifier = Modifier.padding(start = 48.dp, bottom = 8.dp).clearAndSetSemantics { },
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             } else {
-                                Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics { })
+                                Text(
+                                    text = mesaj.metin,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.clearAndSetSemantics { },
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             }
 
 
-
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clearAndSetSemantics { },
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = timeText,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                                     modifier = Modifier.clearAndSetSemantics { }
                                 )
                                 if (mesaj.gonderenId == currentUser?.id) {
@@ -733,7 +744,7 @@ fun ChatScreen(
                                             imageVector = Icons.Default.Schedule,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp).clearAndSetSemantics { },
-                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
                                         "error" -> Icon(
                                             imageVector = Icons.Default.ErrorOutline,
@@ -745,7 +756,7 @@ fun ChatScreen(
                                             imageVector = Icons.Default.Check,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp).clearAndSetSemantics { },
-                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
                                     }
                                 }

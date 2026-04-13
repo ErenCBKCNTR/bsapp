@@ -14,11 +14,17 @@ class ThemePreferences(private val context: Context) {
         val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
         val AUTO_READ_MESSAGES = booleanPreferencesKey("auto_read_messages")
         val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
+        val IS_DESIGN_2 = booleanPreferencesKey("is_design_2")
     }
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[IS_DARK_MODE] ?: false // Default to light mode
+        }
+
+    val isDesign2: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[IS_DESIGN_2] ?: false // Default to original design
         }
 
     val autoReadMessages: Flow<Boolean> = context.dataStore.data
@@ -46,6 +52,12 @@ class ThemePreferences(private val context: Context) {
     suspend fun saveHapticPreference(haptic: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HAPTIC_FEEDBACK] = haptic
+        }
+    }
+
+    suspend fun saveDesignPreference(isDesign2: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[IS_DESIGN_2] = isDesign2
         }
     }
 }

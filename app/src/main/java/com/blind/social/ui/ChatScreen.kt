@@ -19,6 +19,7 @@ import java.time.ZoneId
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -87,6 +88,14 @@ fun ChatScreen(
     val isCreator = currentUser?.id == creatorId
     val combinedMessages = remember(mesajlar, localPendingMessages) {
         (mesajlar + localPendingMessages).sortedBy { it.olusturmaTarihi ?: "9999" }
+    }
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(combinedMessages.size) {
+        if (combinedMessages.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
     }
 
     var selectedMessage by remember { mutableStateOf<Mesaj?>(null) }
@@ -400,6 +409,7 @@ fun ChatScreen(
         }
     ) { innerPadding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

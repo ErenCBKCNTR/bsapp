@@ -26,77 +26,19 @@ import io.github.jan.supabase.postgrest.query.Columns
 
 class MesajDeposu {
 
-        fun mesajlariDinle(odaId: String): Flow<Result<List<Mesaj>>> = kotlinx.coroutines.flow.callbackFlow {
-        var currentList = mutableListOf<Mesaj>()
+            fun mesajlariDinle(odaId: String): Flow<Result<List<Mesaj>>> = flow {
+        while (true) {
+            try {
+                val mesajlar = SupabaseModul.client.postgrest["mesajlar"]
+                    .select(columns = Columns.raw("*, profiller(kullanici_adi)")) {
+                        filter { eq("oda_id", odaId) }
+                    }.decodeList<Mesaj>()
 
-        try {
-            // 1. İlk yükleme (Tam veri çekimi)
-            val initialMesajlar = SupabaseModul.client.postgrest["mesajlar"]
-                .select(columns = Columns.raw("*, profiller(kullanici_adi)")) {
-                    filter { eq("oda_id", odaId) }
-                }.decodeList<Mesaj>()
-
-            currentList = initialMesajlar.toMutableList()
-            trySend(Result.success(currentList.toList()))
-
-            // 2. Realtime Kanalını Kur
-            val channelName = "mesajlar-changes-$odaId-${System.currentTimeMillis()}"
-            val channel = SupabaseModul.client.realtime.channel(channelName)
-            val changeFlow = channel.postgresChangeFlow<PostgresAction>("public") {
-                table = "mesajlar"
-                filter = "oda_id=eq.$odaId"
+                emit(Result.success(mesajlar))
+            } catch (e: Exception) {
+                emit(Result.failure(e))
             }
-
-            launch {
-                channel.status.collect { status ->
-                    Log.d("Realtime", "MesajDeposu channel status: $status")
-                }
-            }
-
-            // 3. Değişiklikleri Dinle (Doğrudan ProducerScope içinde)
-            launch {
-                changeFlow.collect { action ->
-                    Log.d("Realtime", "Postgres action: $action")
-                    when (action) {
-                        is PostgresAction.Insert -> {
-                            // Gelen eksik veriden sadece ID'yi alıyoruz
-                            val insertedId = action.record["id"]?.jsonPrimitive?.content
-                            if (insertedId != null) {
-                                try {
-                                    // Çökme olmaması için mesajı JOIN (kullanıcı adı) ile birlikte tekrar çekiyoruz
-                                    val tamMesaj = SupabaseModul.client.postgrest["mesajlar"]
-                                        .select(columns = Columns.raw("*, profiller(kullanici_adi)")) {
-                                            filter { eq("id", insertedId) }
-                                        }.decodeSingle<Mesaj>()
-
-                                    currentList = currentList.toMutableList().apply { add(tamMesaj) }
-                                    trySend(Result.success(currentList.toList()))
-                                } catch (e: Exception) {
-                                    Log.e("Realtime", "Tam mesaj çekilirken hata:", e)
-                                }
-                            }
-                        }
-                        is PostgresAction.Delete -> {
-                            val deletedId = action.oldRecord["id"]?.jsonPrimitive?.content
-                            if (deletedId != null) {
-                                currentList = currentList.toMutableList().apply { removeAll { it.id == deletedId } }
-                                trySend(Result.success(currentList.toList()))
-                            }
-                        }
-                        else -> {}
-                    }
-                }
-            }
-
-            channel.subscribe(blockUntilSubscribed = false)
-
-            awaitClose {
-                launch { channel.unsubscribe() }
-            }
-
-        } catch (e: Exception) {
-            trySend(Result.failure(e))
-            close(e)
+            kotlinx.coroutines.delay(2000)
         }
     }.flowOn(Dispatchers.IO)
 

@@ -467,11 +467,42 @@ fun ChatScreen(
                         .padding(vertical = 4.dp),
                     horizontalArrangement = if (isMyMessage) Arrangement.End else Arrangement.Start
                 ) {
+                    // TARIH PARSE
+                    val timeText = try {
+                        mesaj.olusturmaTarihi?.let { dateStr ->
+                            val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
+                            val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+                            parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            val date = parser.parse(cleanStr)
+                            val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                            formatter.timeZone = java.util.TimeZone.getDefault()
+                            formatter.format(date!!)
+                        } ?: ""
+                    } catch (e: Exception) {
+                        ""
+                    }
+
+                    val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
+                    val senderPrefix = if (isMyMessage) "" else "$senderName kişisinden: "
+                    val statusText = if (isMyMessage) {
+                        when (mesaj.sendStatus) {
+                            "pending" -> "Gönderilmeyi bekliyor"
+                            "error" -> "Gönderilemedi"
+                            else -> "Gönderildi"
+                        }
+                    } else {
+                        ""
+                    }
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth(0.7f)
                             .combinedClickable(
-                                onClick = {},
+                                onClick = {
+                                    if (mesaj.mesajTipi == "ses") {
+                                        toggleAudioPlayback(mesaj.metin, mesaj.id)
+                                    }
+                                },
                                 onLongClick = {
                                     if (isCreator || isMyMessage) {
                                         selectedMessage = mesaj
@@ -483,29 +514,20 @@ fun ChatScreen(
                                 if (autoRead) {
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                                 }
-                                val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
-
-                                val timeTextSemantic = try {
-                                    mesaj.olusturmaTarihi?.let { dateStr ->
-                                        val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
-                                        val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
-                                        parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                                        val date = parser.parse(cleanStr)
-                                        val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-                                        formatter.timeZone = java.util.TimeZone.getDefault()
-                                        formatter.format(date!!)
-                                    } ?: ""
-                                } catch (e: Exception) { "" }
 
                                 if (mesaj.mesajTipi == "ses") {
                                     val durationSecs = if (playingMessageId == mesaj.id) playbackDuration / 1000 else 0
-                                    val durationStr = if (durationSecs > 0) "$durationSecs saniye, " else ""
+                                    val durationStr = if (durationSecs > 0) "$durationSecs saniye" else ""
 
-                                    val prefix = if (isMyMessage) "Sesli mesaj" else "$senderName kişisinden sesli mesaj"
-                                    contentDescription = "$prefix, ${durationStr}Saat $timeTextSemantic."
+                                    val prefix = if (isMyMessage) "Sesli mesaj" else "$senderPrefix Sesli mesaj"
+                                    val components = listOf(prefix, durationStr, "Saat $timeText", statusText).filter { it.isNotBlank() }
+                                    contentDescription = components.joinToString(", ") + ". Oynatmak veya duraklatmak için çift dokunun."
+
+                                    role = Role.Button
                                 } else {
-                                    val prefix = if (isMyMessage) mesaj.metin else "$senderName: ${mesaj.metin}"
-                                    contentDescription = "$prefix, Saat $timeTextSemantic"
+                                    val prefix = if (isMyMessage) mesaj.metin else "$senderPrefix ${mesaj.metin}"
+                                    val components = listOf(prefix, "Saat $timeText", statusText).filter { it.isNotBlank() }
+                                    contentDescription = components.joinToString(", ")
                                 }
                             },
                         colors = CardDefaults.cardColors(
@@ -521,7 +543,8 @@ fun ChatScreen(
                             Text(
                                 text = displaySenderName,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clearAndSetSemantics { }
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             if (mesaj.mesajTipi == "ses") {
@@ -529,9 +552,7 @@ fun ChatScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                         IconButton(
                                             onClick = { toggleAudioPlayback(mesaj.metin, mesaj.id) },
-                                            modifier = Modifier.semantics {
-                                                contentDescription = if (playingMessageId == mesaj.id) "Sesi duraklat" else "Sesi oynat"
-                                            }
+                                            modifier = Modifier.clearAndSetSemantics { }
                                         ) {
                                             Icon(
                                                 imageVector = if (playingMessageId == mesaj.id) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -560,7 +581,7 @@ fun ChatScreen(
                                                     globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
                                                 }
                                             },
-                                            modifier = Modifier.semantics { contentDescription = "Oynatma hızı ${currentPlaybackSpeed}x" }
+                                            modifier = Modifier.clearAndSetSemantics { }
                                         ) {
                                             Text("${currentPlaybackSpeed}x")
                                         }
@@ -569,27 +590,15 @@ fun ChatScreen(
                                         Text(
                                             text = "Süre: ${playbackDuration / 1000}s",
                                             style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)
+                                            modifier = Modifier.padding(start = 48.dp, bottom = 8.dp).clearAndSetSemantics { }
                                         )
                                     }
                                 }
                             } else {
-                                Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
+                                Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.clearAndSetSemantics { })
                             }
 
-                                                        val timeText = try {
-                                mesaj.olusturmaTarihi?.let { dateStr ->
-                                    val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
-                                    val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
-                                    parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                                    val date = parser.parse(cleanStr)
-                                    val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-                                    formatter.timeZone = java.util.TimeZone.getDefault()
-                                    formatter.format(date!!)
-                                } ?: ""
-                            } catch (e: Exception) {
-                                ""
-                            }
+
 
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -599,27 +608,28 @@ fun ChatScreen(
                                 Text(
                                     text = timeText,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.clearAndSetSemantics { }
                                 )
                                 if (mesaj.gonderenId == currentUser?.id) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     when (mesaj.sendStatus) {
                                         "pending" -> Icon(
                                             imageVector = Icons.Default.Schedule,
-                                            contentDescription = "Gönderilmeyi bekliyor",
-                                            modifier = Modifier.size(16.dp),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp).clearAndSetSemantics { },
                                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                         )
                                         "error" -> Icon(
                                             imageVector = Icons.Default.ErrorOutline,
-                                            contentDescription = "Gönderilemedi",
-                                            modifier = Modifier.size(16.dp),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp).clearAndSetSemantics { },
                                             tint = MaterialTheme.colorScheme.error
                                         )
                                         else -> Icon(
                                             imageVector = Icons.Default.Check,
-                                            contentDescription = "Gönderildi",
-                                            modifier = Modifier.size(16.dp),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp).clearAndSetSemantics { },
                                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                         )
                                     }

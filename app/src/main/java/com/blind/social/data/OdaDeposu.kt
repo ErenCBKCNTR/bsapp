@@ -2,6 +2,7 @@ package com.blind.social.data
 
 import com.blind.social.SupabaseModul
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -25,9 +26,24 @@ class OdaDeposu {
         }
     }.flowOn(Dispatchers.IO)
 
-    suspend fun odaOlustur(oda: Oda): Result<Unit> {
+    suspend fun odaOlustur(oda: Oda): Result<Oda> {
         return try {
-            SupabaseModul.client.postgrest["odalar"].insert(oda)
+            val user = SupabaseModul.client.auth.currentUserOrNull()
+            val odaWithCreator = if (user != null) oda.copy(kurucuId = user.id) else oda
+            val newOda = SupabaseModul.client.postgrest["odalar"]
+                .insert(odaWithCreator) { select() }
+                .decodeSingle<Oda>()
+            Result.success(newOda)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun odayiSil(odaId: String): Result<Unit> {
+        return try {
+            SupabaseModul.client.postgrest["odalar"].delete {
+                filter { eq("id", odaId) }
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

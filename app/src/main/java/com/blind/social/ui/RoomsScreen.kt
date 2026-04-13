@@ -249,6 +249,11 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                         val result = odaDeposu.odaOlustur(newOda)
                         if (result.isSuccess) {
                             showCreateDialog = false
+                            val createdRoom = result.getOrNull()
+                            createdRoom?.id?.let { roomId ->
+                                val encodedName = java.net.URLEncoder.encode(createdRoom.odaAdi, "UTF-8")
+                                onNavigateToChat(roomId, encodedName, createdRoom.kurucuId)
+                            }
                         }
                     }
                 }

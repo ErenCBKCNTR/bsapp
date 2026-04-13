@@ -29,11 +29,15 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.text.style.TextAlign
 
 import androidx.compose.material.icons.filled.Pause
+import android.media.PlaybackParams
+import kotlinx.coroutines.delay
 import androidx.compose.material3.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,6 +108,9 @@ fun ChatScreen(
     // Audio Playback State
     var playingMessageId by remember { mutableStateOf<String?>(null) }
     var globalMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var playbackProgress by remember { mutableStateOf(0f) }
+    var playbackDuration by remember { mutableStateOf(0) }
+    var currentPlaybackSpeed by remember { mutableStateOf(1.0f) }
 
     // Voice Chat State
     var showVoiceChatSheet by remember { mutableStateOf(false) }
@@ -238,6 +245,8 @@ fun ChatScreen(
             globalMediaPlayer?.release()
             globalMediaPlayer = null
             playingMessageId = null
+            playbackProgress = 0f
+            playbackDuration = 0
         } else {
             // Play new audio
             globalMediaPlayer?.release()
@@ -245,11 +254,19 @@ fun ChatScreen(
                 val mp = MediaPlayer().apply {
                     setDataSource(url)
                     prepareAsync()
-                    setOnPreparedListener { start() }
+                    setOnPreparedListener {
+                        playbackDuration = duration
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            playbackParams = PlaybackParams().setSpeed(currentPlaybackSpeed)
+                        }
+                        start()
+                    }
                     setOnCompletionListener {
                         release()
                         globalMediaPlayer = null
                         playingMessageId = null
+                        playbackProgress = 0f
+                        playbackDuration = 0
                     }
                 }
                 globalMediaPlayer = mp
@@ -258,6 +275,21 @@ fun ChatScreen(
                 e.printStackTrace()
                 playingMessageId = null
             }
+        }
+    }
+
+    LaunchedEffect(playingMessageId) {
+        while (playingMessageId != null && globalMediaPlayer != null) {
+            try {
+                if (globalMediaPlayer?.isPlaying == true) {
+                    val current = globalMediaPlayer?.currentPosition ?: 0
+                    val total = globalMediaPlayer?.duration ?: 1
+                    if (total > 0) {
+                        playbackProgress = current.toFloat() / total.toFloat()
+                    }
+                }
+            } catch (e: Exception) { }
+            delay(100)
         }
     }
 
@@ -307,8 +339,18 @@ fun ChatScreen(
                     },
                     actions = {
                         if (isCreator) {
-                            Button(onClick = { /* TODO: Close room logic */ }) {
-                                Text("Odayı Kapat")
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    val odaDeposu = com.blind.social.data.OdaDeposu()
+                                    val result = odaDeposu.odayiSil(roomId)
+                                    if (result.isSuccess) {
+                                        onNavigateBack()
+                                    } else {
+                                        snackbarHostState.showSnackbar("Oda silinemedi.")
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Odayı Sil")
                             }
                         } else {
                             TextButton(onClick = onNavigateBack) {
@@ -437,20 +479,33 @@ fun ChatScreen(
                                     }
                                 }
                             )
-                            .clearAndSetSemantics {
+                            .semantics(mergeDescendants = true) {
                                 if (autoRead) {
                                     liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
                                 }
                                 val senderName = mesaj.gonderenKullaniciAdi ?: mesaj.profil?.kullaniciAdi ?: "Bilinmeyen Kullanıcı"
+
+                                val timeTextSemantic = try {
+                                    mesaj.olusturmaTarihi?.let { dateStr ->
+                                        val cleanStr = if (dateStr.contains(".")) dateStr.substringBefore(".") else dateStr.substringBefore("+").substringBefore("Z")
+                                        val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+                                        parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                        val date = parser.parse(cleanStr)
+                                        val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                        formatter.timeZone = java.util.TimeZone.getDefault()
+                                        formatter.format(date!!)
+                                    } ?: ""
+                                } catch (e: Exception) { "" }
+
                                 if (mesaj.mesajTipi == "ses") {
-                                    contentDescription = "$senderName kişisinden sesli mesaj. Oynatmak veya duraklatmak için çift dokunun."
-                                    role = Role.Button
-                                    onClick(label = "Oynat veya Duraklat") {
-                                        toggleAudioPlayback(mesaj.metin, mesaj.id)
-                                        true
-                                    }
+                                    val durationSecs = if (playingMessageId == mesaj.id) playbackDuration / 1000 else 0
+                                    val durationStr = if (durationSecs > 0) "$durationSecs saniye, " else ""
+
+                                    val prefix = if (isMyMessage) "Sesli mesaj" else "$senderName kişisinden sesli mesaj"
+                                    contentDescription = "$prefix, ${durationStr}Saat $timeTextSemantic."
                                 } else {
-                                    contentDescription = "$senderName: ${mesaj.metin}"
+                                    val prefix = if (isMyMessage) mesaj.metin else "$senderName: ${mesaj.metin}"
+                                    contentDescription = "$prefix, Saat $timeTextSemantic"
                                 }
                             },
                         colors = CardDefaults.cardColors(
@@ -470,19 +525,53 @@ fun ChatScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             if (mesaj.mesajTipi == "ses") {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
-                                        onClick = { toggleAudioPlayback(mesaj.metin, mesaj.id) },
-                                        modifier = Modifier.semantics {
-                                            contentDescription = if (playingMessageId == mesaj.id) "Sesi duraklat" else "Sesi oynat"
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        IconButton(
+                                            onClick = { toggleAudioPlayback(mesaj.metin, mesaj.id) },
+                                            modifier = Modifier.semantics {
+                                                contentDescription = if (playingMessageId == mesaj.id) "Sesi duraklat" else "Sesi oynat"
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = if (playingMessageId == mesaj.id) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                contentDescription = null
+                                            )
                                         }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (playingMessageId == mesaj.id) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                            contentDescription = null
+
+                                        if (playingMessageId == mesaj.id) {
+                                            LinearProgressIndicator(
+                                                progress = { playbackProgress },
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                                            )
+                                        } else {
+                                            LinearProgressIndicator(
+                                                progress = { 0f },
+                                                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                                            )
+                                        }
+
+                                        val speeds = listOf(1.0f, 1.5f, 2.0f)
+                                        TextButton(
+                                            onClick = {
+                                                val nextSpeed = speeds[(speeds.indexOf(currentPlaybackSpeed) + 1) % speeds.size]
+                                                currentPlaybackSpeed = nextSpeed
+                                                if (playingMessageId == mesaj.id && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                                    globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
+                                                }
+                                            },
+                                            modifier = Modifier.semantics { contentDescription = "Oynatma hızı ${currentPlaybackSpeed}x" }
+                                        ) {
+                                            Text("${currentPlaybackSpeed}x")
+                                        }
+                                    }
+                                    if (playingMessageId == mesaj.id) {
+                                        Text(
+                                            text = "Süre: ${playbackDuration / 1000}s",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)
                                         )
                                     }
-                                    Text("🎵 Sesli Mesaj", style = MaterialTheme.typography.bodyMedium)
                                 }
                             } else {
                                 Text(text = mesaj.metin, style = MaterialTheme.typography.bodyLarge)
@@ -544,16 +633,17 @@ fun ChatScreen(
 
         if (showVoiceChatSheet) {
             var showMicSettingsDialog by remember { mutableStateOf(false) }
-            var isPttMode by remember { mutableStateOf(true) } // Varsayılan Bas-Konuş
-            var useSpeaker by remember { mutableStateOf(true) } // Varsayılan hoparlör
-            var noiseSuppression by remember { mutableStateOf(true) } // Varsayılan açık
+            var isPttMode by remember { mutableStateOf(false) } // Varsayılan Bas-Konuş KAPALI
+            var useSpeaker by remember { mutableStateOf(false) } // Varsayılan hoparlör KAPALI
+            var noiseSuppression by remember { mutableStateOf(false) } // Varsayılan gürültü engelleme KAPALI
 
             ModalBottomSheet(
                 onDismissRequest = {
                     showVoiceChatSheet = false
                     liveKitYonetici.ayril()
                 },
-                modifier = Modifier.fillMaxHeight(0.6f)
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                modifier = Modifier.fillMaxSize()
             ) {
                 Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

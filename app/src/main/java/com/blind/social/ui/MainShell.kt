@@ -75,17 +75,6 @@ fun MainShell(
                 HorizontalDivider()
 
                 NavigationDrawerItem(
-                    label = { Text(if (isDarkMode) "Aydınlık Tema Geç" else "Karanlık Tema Geç") },
-                    selected = false,
-                    onClick = {
-                        onToggleTheme(!isDarkMode)
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    icon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = "Tema Değiştir") },
-                    modifier = Modifier.semantics { contentDescription = "Tema değiştirmek için çift dokunun" }
-                )
-
-                NavigationDrawerItem(
                     label = { Text("Uygulama Ayarları") },
                     selected = currentRoute == "privacy",
                     onClick = {
@@ -180,9 +169,11 @@ fun MainShell(
                 composable("messages") { MessagesScreen() }
                 composable("profile") { ProfileScreen() }
                 composable("privacy") {
-                    PrivacySettingsScreen(
+                    SettingsScreen(
                         isDesign2 = isDesign2,
-                        onToggleDesign2 = onToggleDesign2
+                        onToggleDesign2 = onToggleDesign2,
+                        isDarkMode = isDarkMode,
+                        onToggleTheme = onToggleTheme
                     )
                 }
                 composable("about") { AboutScreen() }

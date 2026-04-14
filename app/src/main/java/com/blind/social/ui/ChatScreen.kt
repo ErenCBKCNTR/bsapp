@@ -643,6 +643,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
                 .padding(16.dp),
             reverseLayout = true
         ) {

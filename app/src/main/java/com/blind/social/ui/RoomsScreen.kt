@@ -46,7 +46,8 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     var passwordInput by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf(false) }
 
-    // Filters (Only actively used if NOT Design 2, or modified for Design 2)
+    // Filters
+    var showFilters by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Tümü") }
     var showOnlyUnprotected by remember { mutableStateOf(false) }
@@ -83,6 +84,18 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                             modifier = Modifier.semantics { heading() }
                         )
                     },
+                    actions = {
+                        IconButton(
+                            onClick = { showFilters = !showFilters },
+                            modifier = Modifier.semantics { contentDescription = "Oda filtrelerini ${if (showFilters) "gizle" else "göster"}" }
+                        ) {
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
                 )
             }
@@ -115,63 +128,83 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                 .padding(horizontal = 16.dp)
         ) {
             if (isDesign2) {
-                Text(
-                    "Aktif Odalar",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Aktif Odalar",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { showFilters = !showFilters },
+                        modifier = Modifier.semantics { contentDescription = "Oda filtrelerini ${if (showFilters) "gizle" else "göster"}" }
+                    ) {
+                        Icon(Icons.Default.FilterList, contentDescription = null)
+                    }
+                }
             }
 
-            // Filter Section
-            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp, top = if (!isDesign2) 16.dp else 0.dp)) {
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Oda Ara") },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    singleLine = true,
-                    colors = if (isDesign2) TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else TextFieldDefaults.colors()
-                )
+            // Filter Section with AnimatedVisibility
+            androidx.compose.animation.AnimatedVisibility(visible = showFilters) {
+                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Oda Ara") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        singleLine = true,
+                        colors = if (isDesign2) TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else TextFieldDefaults.colors()
+                    )
 
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedCategoryFilter,
-                        onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
-                        modifier = Modifier.weight(1f).padding(end = 8.dp)
-                    ) {
-                        TextField(
-                            readOnly = true,
-                            value = selectedCategory,
-                            onValueChange = {},
-                            label = { Text("Kategori") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
-                            colors = if (isDesign2) ExposedDropdownMenuDefaults.textFieldColors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else ExposedDropdownMenuDefaults.textFieldColors(),
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        ExposedDropdownMenuBox(
                             expanded = expandedCategoryFilter,
-                            onDismissRequest = { expandedCategoryFilter = false }
+                            onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
+                            modifier = Modifier.weight(1f).padding(end = 8.dp)
                         ) {
-                            filterCategories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { Text(cat) },
-                                    onClick = {
-                                        selectedCategory = cat
-                                        expandedCategoryFilter = false
-                                    }
-                                )
+                            TextField(
+                                readOnly = true,
+                                value = selectedCategory,
+                                onValueChange = {},
+                                label = { Text("Kategori") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
+                                colors = if (isDesign2) ExposedDropdownMenuDefaults.textFieldColors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else ExposedDropdownMenuDefaults.textFieldColors(),
+                                modifier = Modifier.menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedCategoryFilter,
+                                onDismissRequest = { expandedCategoryFilter = false }
+                            ) {
+                                filterCategories.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat) },
+                                        onClick = {
+                                            selectedCategory = cat
+                                            expandedCategoryFilter = false
+                                        }
+                                    )
+                                }
                             }
                         }
-                    }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "Sadece Şifresiz", color = if (isDesign2) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface)
-                        Switch(
-                            checked = showOnlyUnprotected,
-                            onCheckedChange = { showOnlyUnprotected = it },
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Sadece Şifresiz", color = if (isDesign2) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface)
+                            Switch(
+                                checked = showOnlyUnprotected,
+                                onCheckedChange = { showOnlyUnprotected = it },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
                     }
                 }
             }

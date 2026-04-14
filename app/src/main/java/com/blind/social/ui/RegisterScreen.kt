@@ -24,7 +24,8 @@ fun RegisterScreen(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    var adSoyad by remember { mutableStateOf("") }
+    var ad by remember { mutableStateOf("") }
+    var soyad by remember { mutableStateOf("") }
     var kullaniciAdi by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var sifre by remember { mutableStateOf("") }
@@ -52,60 +53,86 @@ fun RegisterScreen(
             )
         }
 
-        TextField(
-            value = adSoyad,
-            onValueChange = { adSoyad = it },
-            label = { Text("Ad Soyad") },
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
-            singleLine = true
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = ad,
+                onValueChange = { if (it.length <= 50) ad = it },
+                label = { Text("Ad") },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = "Adınızı girin, en fazla 50 karakter" },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = soyad,
+                onValueChange = { if (it.length <= 50) soyad = it },
+                label = { Text("Soyad") },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = "Soyadınızı girin, en fazla 50 karakter" },
+                singleLine = true
+            )
+        }
 
-        TextField(
+        OutlinedTextField(
             value = kullaniciAdi,
-            onValueChange = { kullaniciAdi = it },
+            onValueChange = { if (it.length <= 30) kullaniciAdi = it },
             label = { Text("Kullanıcı Adı") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .semantics { contentDescription = "Kullanıcı adınızı girin, en fazla 30 karakter" },
             singleLine = true
         )
 
-        TextField(
+        OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { if (it.length <= 254) email = it },
             label = { Text("E-posta") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .semantics { contentDescription = "E-posta adresinizi girin, en fazla 254 karakter" },
             singleLine = true
         )
 
-        TextField(
+        OutlinedTextField(
             value = sifre,
-            onValueChange = { sifre = it },
+            onValueChange = { if (it.length <= 64) sifre = it },
             label = { Text("Şifre") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .semantics { contentDescription = "Şifrenizi girin, en az 6, en fazla 64 karakter" },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
 
-        TextField(
+        val dogumTarihiFormated = if (dogumTarihi.length == 8) {
+            "${dogumTarihi.substring(0, 2)}.${dogumTarihi.substring(2, 4)}.${dogumTarihi.substring(4, 8)}"
+        } else dogumTarihi
+
+        OutlinedTextField(
             value = dogumTarihi,
-            onValueChange = { dogumTarihi = it },
-            label = { Text("Doğum Tarihi (GG.AA.YYYY)") },
+            onValueChange = { if (it.length <= 8 && it.all { char -> char.isDigit() }) dogumTarihi = it },
+            label = { Text("Doğum Tarihi") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            singleLine = true
+                .padding(bottom = 24.dp)
+                .semantics { contentDescription = "Doğum Tarihi. Şu anki değer: $dogumTarihiFormated" },
+            singleLine = true,
+            visualTransformation = DateVisualTransformation(),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
         )
 
         Button(
             onClick = {
-                if (adSoyad.isBlank() || kullaniciAdi.isBlank() || email.isBlank() || sifre.isBlank() || dogumTarihi.isBlank()) {
+                if (ad.isBlank() || soyad.isBlank() || kullaniciAdi.isBlank() || email.isBlank() || sifre.isBlank() || dogumTarihi.isBlank()) {
                     errorMessage = "Lütfen tüm alanları doldurun."
                     return@Button
                 }
@@ -116,7 +143,8 @@ fun RegisterScreen(
                         email = email,
                         sifre = sifre,
                         kullaniciAdi = kullaniciAdi,
-                        adSoyad = adSoyad,
+                        ad = ad,
+                        soyad = soyad,
                         dogumTarihi = dogumTarihi
                     )
                     isLoading = false

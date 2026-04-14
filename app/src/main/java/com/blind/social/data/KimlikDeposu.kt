@@ -13,7 +13,8 @@ class KimlikDeposu {
         email: String,
         sifre: String,
         kullaniciAdi: String,
-        adSoyad: String,
+        ad: String,
+        soyad: String,
         dogumTarihi: String
     ): Result<Unit> {
         return try {
@@ -25,7 +26,8 @@ class KimlikDeposu {
                 // Trigger ve mention işlemleri için metadata
                 val metadata = buildJsonObject {
                     put("username", kullaniciAdi)
-                    put("ad_soyad", adSoyad)
+                    put("ad", ad)
+                    put("soyad", soyad)
                 }
                 this.data = metadata
             }
@@ -46,7 +48,7 @@ class KimlikDeposu {
                     id = user.id,
                     email = email,
                     kullaniciAdi = kullaniciAdi,
-                    adSoyad = adSoyad,
+                    adSoyad = "$ad $soyad".trim(),
                     dogumTarihi = dogumTarihi
                 )
 

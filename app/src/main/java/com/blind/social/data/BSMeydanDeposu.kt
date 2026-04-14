@@ -36,14 +36,13 @@ class BSMeydanDeposu {
             try {
                 val currentUserId = SupabaseModul.client.auth.currentUserOrNull()?.id
 
-                var query = SupabaseModul.client.postgrest["gonderiler"]
-                    .select(Columns.raw("*, profiller(*)"))
-
-                if (kullaniciId != null) {
-                    query = query.filter { eq("yazar_id", kullaniciId) }
-                }
-
-                val rawPosts = query.decodeList<RawGonderi>()
+                val rawPosts = SupabaseModul.client.postgrest["gonderiler"]
+                    .select(Columns.raw("*, profiller(*)")) {
+                        if (kullaniciId != null) {
+                            filter { eq("yazar_id", kullaniciId) }
+                        }
+                    }
+                    .decodeList<RawGonderi>()
 
                 val myLikes = if (currentUserId != null) {
                     SupabaseModul.client.postgrest["begeniler"]

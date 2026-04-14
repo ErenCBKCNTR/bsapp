@@ -13,8 +13,14 @@ CREATE TABLE public.profiller (
     kullanici_adi TEXT NOT NULL UNIQUE,
     ad_soyad TEXT NOT NULL,
     dogum_tarihi TEXT,
+    hakkimda TEXT,
+    baglantilar TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Profil tablosuna sonradan eklenen sütunlar (Mevcut veritabanları için güncelleme komutları)
+ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS hakkimda TEXT;
+ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS baglantilar TEXT;
 
 -- Profiller için güvenlik kalkanı (RLS)
 ALTER TABLE public.profiller ENABLE ROW LEVEL SECURITY;

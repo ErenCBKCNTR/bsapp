@@ -83,4 +83,15 @@ class KimlikDeposu {
             Result.failure(e)
         }
     }
+
+    suspend fun sifreGuncelle(yeniSifre: String): Result<Unit> {
+        return try {
+            SupabaseModul.client.auth.modifyUser {
+                password = yeniSifre
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

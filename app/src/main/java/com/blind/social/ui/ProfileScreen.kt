@@ -60,6 +60,7 @@ fun ProfileScreen() {
     val isDesign2 by themePreferences.isDesign2.collectAsState(initial = true)
 
     val profilDeposu = remember { ProfilDeposu() }
+    val kimlikDeposu = remember { com.blind.social.data.KimlikDeposu() }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -307,9 +308,21 @@ fun ProfileScreen() {
 
                             val result = profilDeposu.profilGuncelle(profilToSave)
                             if (result.isSuccess) {
-                                // If password was edited, logic for changing auth password would go here.
                                 mevcutProfil = profilToSave
-                                snackbarHostState.showSnackbar("Profil başarıyla güncellendi.")
+
+                                if (isPasswordEditing && yeniSifre.isNotBlank()) {
+                                    val pwResult = kimlikDeposu.sifreGuncelle(yeniSifre)
+                                    if (pwResult.isSuccess) {
+                                        yeniSifre = ""
+                                        yeniSifreTekrar = ""
+                                        isPasswordEditing = false
+                                        snackbarHostState.showSnackbar("Profil ve şifre başarıyla güncellendi.")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Profil güncellendi ancak ŞİFRE DEĞİŞTİRİLEMEDİ: ${pwResult.exceptionOrNull()?.message}")
+                                    }
+                                } else {
+                                    snackbarHostState.showSnackbar("Profil başarıyla güncellendi.")
+                                }
                             } else {
                                 snackbarHostState.showSnackbar("Profil güncellenemedi: ${result.exceptionOrNull()?.message}")
                             }

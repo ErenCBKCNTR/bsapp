@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -17,6 +18,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.blind.social.data.KimlikDeposu
+import io.github.jan.supabase.gotrue.auth
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import android.app.Activity
@@ -73,6 +75,17 @@ fun MainShell(
             ModalDrawerSheet {
                 Text("Menü", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
                 HorizontalDivider()
+
+                NavigationDrawerItem(
+                    label = { Text("BS Meydan") },
+                    selected = currentRoute == "bs_meydan",
+                    onClick = {
+                        navController.navigate("bs_meydan")
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.DynamicFeed, contentDescription = "BS Meydan") },
+                    modifier = Modifier.semantics { contentDescription = "BS Meydan akışına gitmek için çift dokunun" }
+                )
 
                 NavigationDrawerItem(
                     label = { Text("Uygulama Ayarları") },
@@ -160,6 +173,35 @@ fun MainShell(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("home") { HomeScreen() }
+                composable("bs_meydan") {
+                    BSMeydanScreen(
+                        onNavigateToProfile = { userId -> navController.navigate("bs_meydan_profile/$userId") },
+                        onNavigateToPostDetail = { postId -> navController.navigate("post_detail/$postId") },
+                        onOpenDrawer = { coroutineScope.launch { drawerState.open() } },
+                        currentUserId = com.blind.social.SupabaseModul.client.auth.currentUserOrNull()?.id ?: "unknown"
+                    )
+                }
+                composable(
+                    route = "bs_meydan_profile/{userId}",
+                    arguments = listOf(navArgument("userId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                    BSMeydanProfileScreen(
+                        userId = userId,
+                        currentUserId = com.blind.social.SupabaseModul.client.auth.currentUserOrNull()?.id ?: "unknown",
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToPostDetail = { postId -> navController.navigate("post_detail/$postId") }
+                    )
+                }
+                composable(
+                    route = "post_detail/{postId}",
+                    arguments = listOf(navArgument("postId") { type = NavType.StringType })
+                ) {
+                    // Placeholder for Post Detail / Comments screen
+                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        Text("Gönderi Detay Ekranı")
+                    }
+                }
                 composable("rooms") {
                     RoomsScreen(onNavigateToChat = { roomId, roomName, creatorId ->
                         val safeCreatorId = creatorId?.toString() ?: "null"

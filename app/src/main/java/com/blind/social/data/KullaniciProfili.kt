@@ -12,5 +12,9 @@ data class KullaniciProfili(
     @SerialName("ad_soyad")
     val adSoyad: String,
     @SerialName("dogum_tarihi")
-    val dogumTarihi: String
+    val dogumTarihi: String,
+    @SerialName("hakkimda")
+    val hakkimda: String? = null,
+    @SerialName("baglantilar")
+    val baglantilar: String? = null
 )

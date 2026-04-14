@@ -1,13 +1,9 @@
 -- Supabase Temiz Kurulum Şeması (Blind Social)
--- Uyarı: Bu komutlar mevcut tabloları kalıcı olarak SİLECEKTİR (DROP CASCADE) ve sıfırdan kuracaktır.
+-- Supabase Güvenli Şema (Blind Social)
+-- Mevcut verileri KORUR, sadece gerekli tabloları/sütunları oluşturur.
 
--- 1. Mevcut Tabloları Temizle (Eğer varsa)
-DROP TABLE IF EXISTS public.mesajlar CASCADE;
-DROP TABLE IF EXISTS public.odalar CASCADE;
-DROP TABLE IF EXISTS public.profiller CASCADE;
-
--- 2. Profiller Tablosu (auth.users tablosu ile 1-1 eşleşir)
-CREATE TABLE public.profiller (
+-- 1. Profiller Tablosu
+CREATE TABLE IF NOT EXISTS public.profiller (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     email TEXT NOT NULL,
     kullanici_adi TEXT NOT NULL UNIQUE,
@@ -30,7 +26,7 @@ CREATE POLICY "Profilleri herkes görebilir" ON public.profiller FOR SELECT USIN
 CREATE POLICY "Kullanıcı sadece kendi profilini değiştirebilir" ON public.profiller FOR ALL USING (auth.uid() = id);
 
 -- 3. Odalar Tablosu
-CREATE TABLE public.odalar (
+CREATE TABLE IF NOT EXISTS public.odalar (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     oda_adi TEXT NOT NULL,
     kapasite INTEGER NOT NULL DEFAULT 3,
@@ -50,7 +46,7 @@ CREATE POLICY "Odayı kurucu düzenleyebilir" ON public.odalar FOR UPDATE USING 
 CREATE POLICY "Odayı kurucu silebilir" ON public.odalar FOR DELETE USING (auth.uid() = kurucu_id);
 
 -- 4. Mesajlar Tablosu
-CREATE TABLE public.mesajlar (
+CREATE TABLE IF NOT EXISTS public.mesajlar (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     oda_id UUID REFERENCES public.odalar(id) ON DELETE CASCADE NOT NULL,
     kullanici_id UUID REFERENCES public.profiller(id) ON DELETE CASCADE NOT NULL,

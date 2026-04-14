@@ -21,6 +21,36 @@ import com.blind.social.data.KullaniciProfili
 import com.blind.social.data.ProfilDeposu
 import com.blind.social.prefs.ThemePreferences
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+
+class DateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = if (text.text.length >= 8) text.text.substring(0..7) else text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i == 1 || i == 3) out += "."
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 1) return offset
+                if (offset <= 3) return offset + 1
+                if (offset <= 8) return offset + 2
+                return 10
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 2) return offset
+                if (offset <= 5) return offset - 1
+                if (offset <= 10) return offset - 2
+                return 8
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetMapping)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +70,9 @@ fun ProfileScreen() {
     var ad by remember { mutableStateOf("") }
     var soyad by remember { mutableStateOf("") }
     var hakkimda by remember { mutableStateOf("") }
+    var isPasswordEditing by remember { mutableStateOf(false) }
+    var yeniSifre by remember { mutableStateOf("") }
+    var yeniSifreTekrar by remember { mutableStateOf("") }
     var kullaniciAdi by remember { mutableStateOf("") }
     var eposta by remember { mutableStateOf("") }
     var baglantilar by remember { mutableStateOf("") }
@@ -119,19 +152,19 @@ fun ProfileScreen() {
                 ) {
                     OutlinedTextField(
                         value = ad,
-                        onValueChange = { ad = it },
+                        onValueChange = { if (it.length <= 50) ad = it },
                         label = { Text("Ad") },
                         modifier = Modifier
                             .weight(1f)
-                            .semantics { contentDescription = "Adınızı girin" }
+                            .semantics { contentDescription = "Adınızı girin, en fazla 50 karakter" }
                     )
                     OutlinedTextField(
                         value = soyad,
-                        onValueChange = { soyad = it },
+                        onValueChange = { if (it.length <= 50) soyad = it },
                         label = { Text("Soyad") },
                         modifier = Modifier
                             .weight(1f)
-                            .semantics { contentDescription = "Soyadınızı girin" }
+                            .semantics { contentDescription = "Soyadınızı girin, en fazla 50 karakter" }
                     )
                 }
 
@@ -140,55 +173,87 @@ fun ProfileScreen() {
                 // Diğer Alt Alta Alanlar
                 OutlinedTextField(
                     value = hakkimda,
-                    onValueChange = { hakkimda = it },
+                    onValueChange = { if (it.length <= 150) hakkimda = it },
                     label = { Text("Hakkımda") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Hakkımda alanını girin" }
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Hakkımda alanını girin, en fazla 150 karakter" }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = kullaniciAdi,
-                    onValueChange = { kullaniciAdi = it },
+                    onValueChange = { if (it.length <= 30) kullaniciAdi = it },
                     label = { Text("Kullanıcı Adı") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Kullanıcı Adı alanını girin" }
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Kullanıcı Adı alanını girin, en fazla 30 karakter" }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = eposta,
-                    onValueChange = { eposta = it },
+                    onValueChange = { if (it.length <= 254) eposta = it },
                     label = { Text("E-posta") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "E-posta alanını girin" }
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "E-posta alanını girin, en fazla 254 karakter" }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = baglantilar,
-                    onValueChange = { baglantilar = it },
+                    onValueChange = { if (it.length <= 200) baglantilar = it },
                     label = { Text("Bağlantılar") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Bağlantılar alanını girin" }
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Bağlantılar alanını girin, en fazla 200 karakter" }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val dogumTarihiFormated = if (dogumTarihi.length == 8) {
+                    "${dogumTarihi.substring(0, 2)}.${dogumTarihi.substring(2, 4)}.${dogumTarihi.substring(4, 8)}"
+                } else dogumTarihi
+
                 OutlinedTextField(
                     value = dogumTarihi,
-                    onValueChange = { dogumTarihi = it },
-                    label = { Text("Doğum Tarihi (GG.AA.YYYY)") },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Doğum Tarihi (GG.AA.YYYY) alanını girin" }
+                    onValueChange = { if (it.length <= 8 && it.all { char -> char.isDigit() }) dogumTarihi = it },
+                    label = { Text("Doğum Tarihi") },
+                    modifier = Modifier.fillMaxWidth().semantics {
+                        contentDescription = "Doğum Tarihi. Şu anki değer: $dogumTarihiFormated"
+                    },
+                    visualTransformation = DateVisualTransformation(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Şifreyi Değiştir Butonu
+                // Şifreyi Değiştir Butonu ve Açılır Kapanır Alanı
                 TextButton(
-                    onClick = { /* Şifre değiştirme işlemi */ },
-                    modifier = Modifier.semantics { contentDescription = "Şifreyi Değiştir ekranını aç" }
+                    onClick = { isPasswordEditing = !isPasswordEditing },
+                    modifier = Modifier.semantics { contentDescription = "Şifreyi Değiştir alanını ${if (isPasswordEditing) "kapat" else "aç"}" }
                 ) {
                     Text(
                         text = "Şifreyi Değiştir",
                         color = if (isDesign2) MaterialTheme.colorScheme.onBackground else Color.DarkGray
                     )
+                }
+
+                androidx.compose.animation.AnimatedVisibility(visible = isPasswordEditing) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = yeniSifre,
+                            onValueChange = { if (it.length <= 64) yeniSifre = it },
+                            label = { Text("Yeni Şifre") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Yeni Şifrenizi girin (en az 6, en fazla 64 karakter)" },
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = yeniSifreTekrar,
+                            onValueChange = { if (it.length <= 64) yeniSifreTekrar = it },
+                            label = { Text("Yeni Şifre (Tekrar)") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = "Yeni Şifrenizi tekrar girin" },
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

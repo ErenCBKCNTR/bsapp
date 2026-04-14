@@ -97,7 +97,8 @@ fun ProfileScreen() {
                 dogumTarihi = profil.dogumTarihi
             }
         } else {
-            snackbarHostState.showSnackbar("Profil yüklenirken hata oluştu.")
+            // Hata durumunda bile fallback bir kere daha denenmiş olur ancak ekranda hata göstermeden formu boş bırakabiliriz
+            snackbarHostState.showSnackbar("Profil yüklenirken hata oluştu, lütfen sayfayı yenileyin.")
         }
         isLoading = false
     }

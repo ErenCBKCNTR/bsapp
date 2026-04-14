@@ -17,11 +17,35 @@ class ProfilDeposu {
             if (profil != null) {
                 Result.success(profil)
             } else {
-                // If profile doesn't exist yet, return an empty one instead of throwing an error
-                Result.success(KullaniciProfili(email = user.email ?: "", kullaniciAdi = "", adSoyad = "", dogumTarihi = ""))
+                // If profile doesn't exist yet, return a fallback one using user metadata
+                val fallbackKullaniciAdi = user.userMetadata?.get("username")?.toString()?.replace("\"", "") ?: ""
+                val fallbackAd = user.userMetadata?.get("ad")?.toString()?.replace("\"", "") ?: ""
+                val fallbackSoyad = user.userMetadata?.get("soyad")?.toString()?.replace("\"", "") ?: ""
+                Result.success(KullaniciProfili(
+                    email = user.email ?: "",
+                    kullaniciAdi = fallbackKullaniciAdi,
+                    adSoyad = "$fallbackAd $fallbackSoyad".trim(),
+                    dogumTarihi = ""
+                ))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // PostgrestException can occur if table doesn't exist or RLS blocks it.
+            // Still provide a fallback instead of triggering the error UI immediately.
+            val user = SupabaseModul.client.auth.currentUserOrNull()
+            if (user != null) {
+                val fallbackKullaniciAdi = user.userMetadata?.get("username")?.toString()?.replace("\"", "") ?: ""
+                val fallbackAd = user.userMetadata?.get("ad")?.toString()?.replace("\"", "") ?: ""
+                val fallbackSoyad = user.userMetadata?.get("soyad")?.toString()?.replace("\"", "") ?: ""
+
+                Result.success(KullaniciProfili(
+                    email = user.email ?: "",
+                    kullaniciAdi = fallbackKullaniciAdi,
+                    adSoyad = "$fallbackAd $fallbackSoyad".trim(),
+                    dogumTarihi = ""
+                ))
+            } else {
+                Result.failure(e)
+            }
         }
     }
 

@@ -716,11 +716,13 @@ fun ChatScreen(
                                 }
 
                                 if (mesaj.mesajTipi == "ses") {
-                                    val durationSecs = if (playingMessageId == mesaj.id) playbackDuration / 1000 else 0
-                                    val durationStr = if (durationSecs > 0) "$durationSecs saniye" else ""
+                                    val prefix = if (isMyMessage) "Senin gönderdiğin" else "$senderPrefix"
 
-                                    val prefix = if (isMyMessage) "Sesli mesaj" else "$senderPrefix Sesli mesaj"
-                                    val components = listOf(prefix, durationStr, "Saat $timeText", statusText).filter { it.isNotBlank() }
+                                    // Hata 1 Çözümü: Temiz, sade ve anlaşılır süre bilgisi. Hız bilgisini okumasını engellemek için sadece süre ve saat bırakıyoruz.
+                                    val durationSecs = if (playingMessageId == mesaj.id) playbackDuration / 1000 else 0
+                                    val durationStr = if (durationSecs > 0) "süresi: $durationSecs saniye" else "sesli mesaj"
+
+                                    val components = listOf(prefix, durationStr, "Saat: $timeText", statusText).filter { it.isNotBlank() }
                                     contentDescription = components.joinToString(", ") + ". Oynatmak veya duraklatmak için çift dokunun."
 
                                     role = Role.Button
@@ -770,13 +772,23 @@ fun ChatScreen(
                                                 if (playingMessageId == mesaj.id && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                                                     globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
                                                 }
+                                                accessibilityView.announceForAccessibility("Oynatma hızı: $nextSpeed katı")
                                             },
-                                            modifier = Modifier.clearAndSetSemantics {
-                                                contentDescription = "Oynatma hızı: ${currentPlaybackSpeed} katı"
-                                                role = Role.Button
+                                            // Hata 2 Çözümü: Butonu odaklanabilir yapıyoruz (clearAndSetSemantics yerine) ve tıklama davranışı atıyoruz
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Oynatma hızını değiştir"
+                                                onClick(label = "Hızı Değiştir", action = {
+                                                    val nextSpeed = speeds[(speeds.indexOf(currentPlaybackSpeed) + 1) % speeds.size]
+                                                    currentPlaybackSpeed = nextSpeed
+                                                    if (playingMessageId == mesaj.id && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                                        globalMediaPlayer?.playbackParams = PlaybackParams().setSpeed(nextSpeed)
+                                                    }
+                                                    accessibilityView.announceForAccessibility("Oynatma hızı: $nextSpeed katı")
+                                                    true
+                                                })
                                             }
                                         ) {
-                                            Text("${currentPlaybackSpeed}x", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text("${currentPlaybackSpeed}x", color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.clearAndSetSemantics {})
                                         }
 
                                         if (playingMessageId == mesaj.id) {

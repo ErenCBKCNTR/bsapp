@@ -71,6 +71,87 @@ CREATE POLICY "Mesaj silme" ON public.mesajlar FOR DELETE USING (
     auth.uid() = (SELECT kurucu_id FROM public.odalar WHERE id = mesajlar.oda_id LIMIT 1)
 );
 
+-- 5. BS Meydan (Mikroblog) Tabloları
+CREATE TABLE IF NOT EXISTS public.gonderiler (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    yazar_id UUID REFERENCES public.profiller(id) ON DELETE CASCADE NOT NULL,
+    icerik TEXT NOT NULL,
+    begeni_sayisi INTEGER DEFAULT 0,
+    yorum_sayisi INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.gonderiler ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Gönderileri herkes görebilir" ON public.gonderiler FOR SELECT USING (true);
+CREATE POLICY "Gönderi oluşturma" ON public.gonderiler FOR INSERT WITH CHECK (auth.uid() = yazar_id);
+CREATE POLICY "Gönderi silme" ON public.gonderiler FOR DELETE USING (auth.uid() = yazar_id);
+CREATE POLICY "Gönderi güncelleme" ON public.gonderiler FOR UPDATE USING (auth.uid() = yazar_id);
+
+CREATE TABLE IF NOT EXISTS public.begeniler (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    gonderi_id UUID REFERENCES public.gonderiler(id) ON DELETE CASCADE NOT NULL,
+    kullanici_id UUID REFERENCES public.profiller(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(gonderi_id, kullanici_id)
+);
+
+ALTER TABLE public.begeniler ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Beğenileri herkes görebilir" ON public.begeniler FOR SELECT USING (true);
+CREATE POLICY "Beğeni yapma" ON public.begeniler FOR INSERT WITH CHECK (auth.uid() = kullanici_id);
+CREATE POLICY "Beğeni geri alma" ON public.begeniler FOR DELETE USING (auth.uid() = kullanici_id);
+
+CREATE TABLE IF NOT EXISTS public.yorumlar (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    gonderi_id UUID REFERENCES public.gonderiler(id) ON DELETE CASCADE NOT NULL,
+    yazar_id UUID REFERENCES public.profiller(id) ON DELETE CASCADE NOT NULL,
+    icerik TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.yorumlar ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Yorumları herkes görebilir" ON public.yorumlar FOR SELECT USING (true);
+CREATE POLICY "Yorum yapma" ON public.yorumlar FOR INSERT WITH CHECK (auth.uid() = yazar_id);
+CREATE POLICY "Yorum silme" ON public.yorumlar FOR DELETE USING (auth.uid() = yazar_id);
+
+-- Beğeni ve Yorum Sayılarını Otomatik Güncelleyen Triggerlar
+CREATE OR REPLACE FUNCTION public.update_gonderi_begeni_sayisi()
+RETURNS trigger AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    UPDATE public.gonderiler SET begeni_sayisi = begeni_sayisi + 1 WHERE id = NEW.gonderi_id;
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    UPDATE public.gonderiler SET begeni_sayisi = begeni_sayisi - 1 WHERE id = OLD.gonderi_id;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_begeni_degisikligi ON public.begeniler;
+CREATE TRIGGER on_begeni_degisikligi
+  AFTER INSERT OR DELETE ON public.begeniler
+  FOR EACH ROW EXECUTE PROCEDURE public.update_gonderi_begeni_sayisi();
+
+CREATE OR REPLACE FUNCTION public.update_gonderi_yorum_sayisi()
+RETURNS trigger AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    UPDATE public.gonderiler SET yorum_sayisi = yorum_sayisi + 1 WHERE id = NEW.gonderi_id;
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    UPDATE public.gonderiler SET yorum_sayisi = yorum_sayisi - 1 WHERE id = OLD.gonderi_id;
+    RETURN OLD;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_yorum_degisikligi ON public.yorumlar;
+CREATE TRIGGER on_yorum_degisikligi
+  AFTER INSERT OR DELETE ON public.yorumlar
+  FOR EACH ROW EXECUTE PROCEDURE public.update_gonderi_yorum_sayisi();
+
 -- Ek: Profil tablosu ile otomatik eşleşen Trigger
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -94,11 +175,15 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- 5. Realtime Bildirimlerini Aç
--- Mesajlar ve Odalar tablosundaki değişiklikleri anlık olarak dinlemek (Flow/Websocket) için gerekli.
+-- 6. Realtime Bildirimlerini Aç
+-- Tablolardaki değişiklikleri anlık olarak dinlemek (Flow/Websocket) için gerekli.
 alter publication supabase_realtime add table public.mesajlar;
 alter publication supabase_realtime add table public.odalar;
+alter publication supabase_realtime add table public.gonderiler;
+alter publication supabase_realtime add table public.begeniler;
+alter publication supabase_realtime add table public.yorumlar;
 
--- 6. Storage (Dosya Depolama) - Sesli Mesajlar Bucket'ı
+-- 7. Storage (Dosya Depolama) - Sesli Mesajlar Bucket'ı
 -- Eğer bucket yoksa ekler (Postgres üzerinden storage ekleme scripti)
 INSERT INTO storage.buckets (id, name, public) VALUES ('sesli_mesajlar', 'sesli_mesajlar', true)
 ON CONFLICT (id) DO NOTHING;

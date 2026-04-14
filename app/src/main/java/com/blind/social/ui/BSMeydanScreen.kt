@@ -17,7 +17,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.blind.social.data.BSMeydanDeposu
 import com.blind.social.data.Gonderi
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,13 +29,19 @@ fun BSMeydanScreen(
     onOpenDrawer: () -> Unit,
     currentUserId: String
 ) {
-    // Mock Data for the feed
-    val mockPosts = remember {
-        listOf(
-            Gonderi("1", "user1", "Ahmet Yılmaz", "Bugün hava çok güzel, biraz yürüyüş yaptım. Herkese iyi günler dilerim!", "3 saat önce", 15, 4, true),
-            Gonderi("2", currentUserId, "Senin Adın", "Yeni özellik olan BS Meydan'ı deniyorum. Erişilebilirlik harika olmuş.", "1 saat önce", 42, 12, false),
-            Gonderi("3", "user3", "Ayşe Kaya", "Günün motivasyon sözü: Asla pes etme!", "10 dakika önce", 5, 0, false)
-        )
+    val meydanDeposu = remember { BSMeydanDeposu() }
+    val coroutineScope = rememberCoroutineScope()
+    var posts by remember { mutableStateOf<List<Gonderi>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        meydanDeposu.gonderileriGercekZamanliDinle().collect { result ->
+            if (result.isSuccess) {
+                posts = result.getOrDefault(emptyList())
+            }
+            isLoading = false
+        }
     }
 
     Scaffold(
@@ -60,7 +68,7 @@ fun BSMeydanScreen(
         },
         floatingActionButton = {
             LargeFloatingActionButton(
-                onClick = { /* Yeni Gönderi Yazma Ekranı / Dialog */ },
+                onClick = { showCreateDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.semantics { contentDescription = "Yeni Gönderi Yaz" }
@@ -70,24 +78,78 @@ fun BSMeydanScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(mockPosts) { post ->
-                PostCard(
-                    post = post,
-                    isOwnPost = post.yazarId == currentUserId,
-                    onNavigateToProfile = { onNavigateToProfile(post.yazarId) },
-                    onNavigateToPostDetail = { onNavigateToPostDetail(post.id) },
-                    onLikeToggle = { /* Beğeni servisine istek */ },
-                    onDeletePost = { /* Silme servisine istek */ },
-                    onEditPost = { /* Düzenleme ekranına geçiş */ }
+        if (isLoading && posts.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (posts.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "Henüz bir gönderi yok. İlk gönderiyi sen paylaş!",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.semantics { contentDescription = "Şu anda aktif bir gönderi bulunamadı. İlk gönderiyi paylaşmak için sağ alt köşedeki Yeni Gönderi Yaz butonuna dokunun." }
                 )
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(posts) { post ->
+                    PostCard(
+                        post = post,
+                        isOwnPost = post.yazarId == currentUserId,
+                        onNavigateToProfile = { onNavigateToProfile(post.yazarId) },
+                        onNavigateToPostDetail = { onNavigateToPostDetail(post.id) },
+                        onLikeToggle = {
+                            coroutineScope.launch {
+                                meydanDeposu.gonderiBegenVeyaGeriAl(post.id, post.isLikedByMe)
+                            }
+                        },
+                        onDeletePost = {
+                            coroutineScope.launch { meydanDeposu.gonderiSil(post.id) }
+                        },
+                        onEditPost = { /* Düzenleme ekranı daha sonra eklenebilir */ }
+                    )
+                }
+            }
+        }
+
+        if (showCreateDialog) {
+            var icerik by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showCreateDialog = false },
+                title = { Text("Yeni Gönderi") },
+                text = {
+                    OutlinedTextField(
+                        value = icerik,
+                        onValueChange = { if (it.length <= 500) icerik = it },
+                        label = { Text("Düşüncelerin...") },
+                        modifier = Modifier.fillMaxWidth().height(150.dp)
+                            .semantics { contentDescription = "Gönderi metnini yazın. En fazla 500 karakter." }
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        if (icerik.isNotBlank()) {
+                            coroutineScope.launch {
+                                meydanDeposu.gonderiOlustur(icerik)
+                                showCreateDialog = false
+                            }
+                        }
+                    }) {
+                        Text("Paylaş")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateDialog = false }) {
+                        Text("İptal")
+                    }
+                }
+            )
         }
     }
 }

@@ -16,6 +16,8 @@ import java.io.File
 import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.ZoneId
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items

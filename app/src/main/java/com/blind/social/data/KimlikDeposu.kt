@@ -48,7 +48,8 @@ class KimlikDeposu {
                     id = user.id,
                     email = email,
                     kullaniciAdi = kullaniciAdi,
-                    adSoyad = "$ad $soyad".trim(),
+                    ad = ad,
+                    soyad = soyad,
                     dogumTarihi = dogumTarihi
                 )
 

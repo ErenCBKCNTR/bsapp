@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS public.profiller (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     email TEXT NOT NULL,
     kullanici_adi TEXT NOT NULL UNIQUE,
-    ad_soyad TEXT NOT NULL,
+    ad TEXT,
+    soyad TEXT,
     dogum_tarihi TEXT,
     hakkimda TEXT,
     baglantilar TEXT,
@@ -15,6 +16,9 @@ CREATE TABLE IF NOT EXISTS public.profiller (
 );
 
 -- Profil tablosuna sonradan eklenen sütunlar (Mevcut veritabanları için güncelleme komutları)
+ALTER TABLE public.profiller DROP COLUMN IF EXISTS ad_soyad;
+ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS ad TEXT;
+ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS soyad TEXT;
 ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS hakkimda TEXT;
 ALTER TABLE public.profiller ADD COLUMN IF NOT EXISTS baglantilar TEXT;
 
@@ -71,12 +75,13 @@ CREATE POLICY "Mesaj silme" ON public.mesajlar FOR DELETE USING (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiller (id, email, kullanici_adi, ad_soyad)
+  INSERT INTO public.profiller (id, email, kullanici_adi, ad, soyad)
   VALUES (
     new.id,
     new.email,
     new.raw_user_meta_data->>'username',
-    COALESCE((new.raw_user_meta_data->>'ad') || ' ' || (new.raw_user_meta_data->>'soyad'), new.raw_user_meta_data->>'username')
+    new.raw_user_meta_data->>'ad',
+    new.raw_user_meta_data->>'soyad'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;

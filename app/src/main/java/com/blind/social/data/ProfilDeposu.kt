@@ -24,7 +24,8 @@ class ProfilDeposu {
                 Result.success(KullaniciProfili(
                     email = user.email ?: "",
                     kullaniciAdi = fallbackKullaniciAdi,
-                    adSoyad = "$fallbackAd $fallbackSoyad".trim(),
+                    ad = fallbackAd,
+                    soyad = fallbackSoyad,
                     dogumTarihi = ""
                 ))
             }
@@ -40,7 +41,8 @@ class ProfilDeposu {
                 Result.success(KullaniciProfili(
                     email = user.email ?: "",
                     kullaniciAdi = fallbackKullaniciAdi,
-                    adSoyad = "$fallbackAd $fallbackSoyad".trim(),
+                    ad = fallbackAd,
+                    soyad = fallbackSoyad,
                     dogumTarihi = ""
                 ))
             } else {

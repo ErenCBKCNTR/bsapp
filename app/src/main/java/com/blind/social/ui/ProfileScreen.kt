@@ -85,10 +85,8 @@ fun ProfileScreen() {
             val profil = result.getOrNull()
             mevcutProfil = profil
             if (profil != null) {
-                // Ad Soyad parse etme
-                val isimParcalari = profil.adSoyad.split(" ", limit = 2)
-                ad = isimParcalari.firstOrNull() ?: ""
-                soyad = if (isimParcalari.size > 1) isimParcalari[1] else ""
+                ad = profil.ad ?: ""
+                soyad = profil.soyad ?: ""
 
                 hakkimda = profil.hakkimda ?: ""
                 kullaniciAdi = profil.kullaniciAdi
@@ -263,11 +261,13 @@ fun ProfileScreen() {
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            val updatedAdSoyad = listOf(ad.trim(), soyad.trim()).filter { it.isNotEmpty() }.joinToString(" ")
+                            val updatedAd = ad.trim()
+                            val updatedSoyad = soyad.trim()
 
                             // Check if any fields actually changed
                             val hasChanges = mevcutProfil == null ||
-                                mevcutProfil?.adSoyad != updatedAdSoyad ||
+                                mevcutProfil?.ad != updatedAd ||
+                                mevcutProfil?.soyad != updatedSoyad ||
                                 mevcutProfil?.kullaniciAdi != kullaniciAdi ||
                                 mevcutProfil?.email != eposta ||
                                 mevcutProfil?.hakkimda != hakkimda ||
@@ -288,7 +288,8 @@ fun ProfileScreen() {
                             isSaving = true
 
                             val profilToSave = mevcutProfil?.copy(
-                                adSoyad = updatedAdSoyad,
+                                ad = updatedAd,
+                                soyad = updatedSoyad,
                                 kullaniciAdi = kullaniciAdi,
                                 email = eposta, // Note: Supabase auth email requires auth.updateUser, this only updates the public profile email
                                 hakkimda = hakkimda,
@@ -297,7 +298,8 @@ fun ProfileScreen() {
                             ) ?: KullaniciProfili(
                                 email = eposta,
                                 kullaniciAdi = kullaniciAdi,
-                                adSoyad = updatedAdSoyad,
+                                ad = updatedAd,
+                                soyad = updatedSoyad,
                                 dogumTarihi = dogumTarihi,
                                 hakkimda = hakkimda,
                                 baglantilar = baglantilar

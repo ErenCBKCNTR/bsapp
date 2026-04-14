@@ -9,8 +9,10 @@ data class KullaniciProfili(
     val email: String,
     @SerialName("kullanici_adi")
     val kullaniciAdi: String,
-    @SerialName("ad_soyad")
-    val adSoyad: String,
+    @SerialName("ad")
+    val ad: String? = null,
+    @SerialName("soyad")
+    val soyad: String? = null,
     @SerialName("dogum_tarihi")
     val dogumTarihi: String,
     @SerialName("hakkimda")

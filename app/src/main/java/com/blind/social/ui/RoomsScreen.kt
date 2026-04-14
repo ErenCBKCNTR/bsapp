@@ -53,11 +53,14 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     var expandedCategoryFilter by remember { mutableStateOf(false) }
     val filterCategories = listOf("Tümü", "Genel", "Siyaset", "Teknoloji", "Oyun", "Müzik", "Eğitim", "Edebiyat")
 
+    var isLoading by remember { mutableStateOf(true) }
+
     LaunchedEffect(Unit) {
         odaDeposu.odalariGercekZamanliDinle().collect { result ->
             if (result.isSuccess) {
                 rooms = result.getOrDefault(emptyList())
             }
+            isLoading = false
         }
     }
 
@@ -116,66 +119,76 @@ fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
                     "Aktif Odalar",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(vertical = 16.dp)
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
-            } else {
-                // Filter Section for Original Design
-                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp, top = 16.dp)) {
-                    TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        label = { Text("Oda Ara") },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        singleLine = true
-                    )
+            }
 
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        ExposedDropdownMenuBox(
+            // Filter Section
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp, top = if (!isDesign2) 16.dp else 0.dp)) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Oda Ara") },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    singleLine = true,
+                    colors = if (isDesign2) TextFieldDefaults.colors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else TextFieldDefaults.colors()
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedCategoryFilter,
+                        onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    ) {
+                        TextField(
+                            readOnly = true,
+                            value = selectedCategory,
+                            onValueChange = {},
+                            label = { Text("Kategori") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
+                            colors = if (isDesign2) ExposedDropdownMenuDefaults.textFieldColors(focusedContainerColor = MaterialTheme.colorScheme.surface, unfocusedContainerColor = MaterialTheme.colorScheme.surface) else ExposedDropdownMenuDefaults.textFieldColors(),
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(
                             expanded = expandedCategoryFilter,
-                            onExpandedChange = { expandedCategoryFilter = !expandedCategoryFilter },
-                            modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            onDismissRequest = { expandedCategoryFilter = false }
                         ) {
-                            TextField(
-                                readOnly = true,
-                                value = selectedCategory,
-                                onValueChange = {},
-                                label = { Text("Kategori") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoryFilter) },
-                                colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                                modifier = Modifier.menuAnchor()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expandedCategoryFilter,
-                                onDismissRequest = { expandedCategoryFilter = false }
-                            ) {
-                                filterCategories.forEach { cat ->
-                                    DropdownMenuItem(
-                                        text = { Text(cat) },
-                                        onClick = {
-                                            selectedCategory = cat
-                                            expandedCategoryFilter = false
-                                        }
-                                    )
-                                }
+                            filterCategories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat) },
+                                    onClick = {
+                                        selectedCategory = cat
+                                        expandedCategoryFilter = false
+                                    }
+                                )
                             }
                         }
+                    }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Sadece Şifresiz")
-                            Switch(
-                                checked = showOnlyUnprotected,
-                                onCheckedChange = { showOnlyUnprotected = it },
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Sadece Şifresiz", color = if (isDesign2) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface)
+                        Switch(
+                            checked = showOnlyUnprotected,
+                            onCheckedChange = { showOnlyUnprotected = it },
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
                     }
                 }
             }
 
             // Room List
-            if (rooms.isEmpty()) {
+            if (isLoading && rooms.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (rooms.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Şu anda aktif bir oda bulunamadı.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.semantics { contentDescription = "Şu anda aktif bir oda bulunamadı." }
+                    )
                 }
             } else {
                 LazyColumn(

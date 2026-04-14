@@ -33,14 +33,18 @@ fun RegisterScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
         if (errorMessage != null) {
             Text(
                 text = errorMessage ?: "",
@@ -164,8 +168,9 @@ fun RegisterScreen(
             Text("Kayıt Ol")
         }
 
-        TextButton(onClick = onNavigateToLogin) {
-            Text("Zaten hesabım var, Giriş Yap")
+            TextButton(onClick = onNavigateToLogin) {
+                Text("Zaten hesabım var, Giriş Yap", color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

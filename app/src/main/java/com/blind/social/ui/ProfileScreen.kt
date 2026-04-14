@@ -57,7 +57,7 @@ class DateVisualTransformation : VisualTransformation {
 fun ProfileScreen() {
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
-    val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+    val isDesign2 by themePreferences.isDesign2.collectAsState(initial = true)
 
     val profilDeposu = remember { ProfilDeposu() }
     val coroutineScope = rememberCoroutineScope()
@@ -262,8 +262,30 @@ fun ProfileScreen() {
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            isSaving = true
                             val updatedAdSoyad = listOf(ad.trim(), soyad.trim()).filter { it.isNotEmpty() }.joinToString(" ")
+
+                            // Check if any fields actually changed
+                            val hasChanges = mevcutProfil == null ||
+                                mevcutProfil?.adSoyad != updatedAdSoyad ||
+                                mevcutProfil?.kullaniciAdi != kullaniciAdi ||
+                                mevcutProfil?.email != eposta ||
+                                mevcutProfil?.hakkimda != hakkimda ||
+                                mevcutProfil?.baglantilar != baglantilar ||
+                                mevcutProfil?.dogumTarihi != dogumTarihi ||
+                                (isPasswordEditing && (yeniSifre.isNotBlank() || yeniSifreTekrar.isNotBlank()))
+
+                            if (!hasChanges) {
+                                snackbarHostState.showSnackbar("Herhangi bir değişiklik yapılmadı.")
+                                return@launch
+                            }
+
+                            if (isPasswordEditing && yeniSifre != yeniSifreTekrar) {
+                                snackbarHostState.showSnackbar("Şifreler eşleşmiyor.")
+                                return@launch
+                            }
+
+                            isSaving = true
+
                             val profilToSave = mevcutProfil?.copy(
                                 adSoyad = updatedAdSoyad,
                                 kullaniciAdi = kullaniciAdi,
@@ -282,6 +304,8 @@ fun ProfileScreen() {
 
                             val result = profilDeposu.profilGuncelle(profilToSave)
                             if (result.isSuccess) {
+                                // If password was edited, logic for changing auth password would go here.
+                                mevcutProfil = profilToSave
                                 snackbarHostState.showSnackbar("Profil başarıyla güncellendi.")
                             } else {
                                 snackbarHostState.showSnackbar("Profil güncellenemedi: ${result.exceptionOrNull()?.message}")

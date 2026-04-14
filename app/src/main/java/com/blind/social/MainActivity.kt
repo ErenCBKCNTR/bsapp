@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
             val context = androidx.compose.ui.platform.LocalContext.current
             val themePreferences = remember { com.blind.social.prefs.ThemePreferences(context) }
             val isDarkMode by themePreferences.isDarkMode.collectAsState(initial = false)
-            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = true)
 
             BlindSocialTheme(darkTheme = isDarkMode, isDesign2 = isDesign2) {
                 Surface(

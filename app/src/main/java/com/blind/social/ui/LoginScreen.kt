@@ -26,14 +26,18 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        if (errorMessage != null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (errorMessage != null) {
             Text(
                 text = errorMessage ?: "",
                 color = MaterialTheme.colorScheme.error,
@@ -45,28 +49,28 @@ fun LoginScreen(
             )
         }
 
-        TextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("E-posta") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true
-        )
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("E-posta") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                singleLine = true
+            )
 
-        TextField(
-            value = sifre,
-            onValueChange = { sifre = it },
-            label = { Text("Şifre") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
-        )
+            OutlinedTextField(
+                value = sifre,
+                onValueChange = { sifre = it },
+                label = { Text("Şifre") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
+            )
 
-        Button(
+            Button(
             onClick = {
                 if (email.isBlank() || sifre.isBlank()) {
                     errorMessage = "E-posta ve şifre alanları boş bırakılamaz."
@@ -93,8 +97,9 @@ fun LoginScreen(
             Text("Giriş Yap")
         }
 
-        TextButton(onClick = onNavigateToRegister) {
-            Text("Hesabım Yok, Kaydol")
+            TextButton(onClick = onNavigateToRegister) {
+                Text("Hesabım Yok, Kaydol", color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }

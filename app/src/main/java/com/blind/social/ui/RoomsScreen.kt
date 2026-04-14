@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 fun RoomsScreen(onNavigateToChat: (String, String, String?) -> Unit) {
     val context = LocalContext.current
     val themePreferences = remember { ThemePreferences(context) }
-    val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+    val isDesign2 by themePreferences.isDesign2.collectAsState(initial = true)
 
     val odaDeposu = remember { OdaDeposu() }
     val coroutineScope = rememberCoroutineScope()
@@ -341,20 +341,22 @@ fun OriginalRoomCard(room: Oda, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Design2RoomCard(room: Oda, onClick: () -> Unit) {
     val isProtected = !room.sifre.isNullOrBlank()
 
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
-            .clickable(onClick = onClick)
+            .height(130.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "${room.odaAdi}, ${if (isProtected) "Şifreli " else ""}Oda. Girmek için çift tıklayın."
+                contentDescription = "${room.odaAdi} Odası, ${room.kategori} Kategorisi, ${room.kapasite} Kişilik, ${if (isProtected) "Şifreli" else "Şifresiz"}. Odaya katılmak için çift tıklayın."
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -364,9 +366,9 @@ fun Design2RoomCard(room: Oda, onClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(64.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -384,12 +386,40 @@ fun Design2RoomCard(room: Oda, onClick: () -> Unit) {
                     text = room.odaAdi,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
-                Text(
-                    text = "${room.kapasite} Kişi Kapasiteli",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = room.kategori,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${room.kapasite} Kişi",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }

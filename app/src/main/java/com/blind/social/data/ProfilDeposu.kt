@@ -12,9 +12,14 @@ class ProfilDeposu {
 
             val profil = SupabaseModul.client.postgrest["profiller"]
                 .select() { filter { eq("id", user.id) } }
-                .decodeSingle<KullaniciProfili>()
+                .decodeSingleOrNull<KullaniciProfili>()
 
-            Result.success(profil)
+            if (profil != null) {
+                Result.success(profil)
+            } else {
+                // If profile doesn't exist yet, return an empty one instead of throwing an error
+                Result.success(KullaniciProfili(email = user.email ?: "", kullaniciAdi = "", adSoyad = "", dogumTarihi = ""))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -24,7 +24,7 @@ class ThemePreferences(private val context: Context) {
 
     val isDesign2: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[IS_DESIGN_2] ?: false // Default to original design
+            preferences[IS_DESIGN_2] ?: true // Default to Design 2
         }
 
     val autoReadMessages: Flow<Boolean> = context.dataStore.data

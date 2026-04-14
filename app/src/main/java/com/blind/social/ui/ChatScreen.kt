@@ -423,7 +423,7 @@ fun ChatScreen(
             }
         },
         bottomBar = {
-            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = false)
+            val isDesign2 by themePreferences.isDesign2.collectAsState(initial = true)
             Surface(
                 color = if (isDesign2) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 modifier = Modifier.fillMaxWidth()
